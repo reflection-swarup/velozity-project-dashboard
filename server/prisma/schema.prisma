@@ -139,6 +139,7 @@ model ProjectMember {
 
 model Task {
   id          String       @id @default(uuid())
+  number      Int          @unique @default(autoincrement())
   projectId   String
   title       String
   description String
@@ -175,6 +176,7 @@ model ActivityLog {
   assigneeIdAtEvent String?
   actorName  String
   taskTitle  String?
+  taskNumber Int?
   fromStatus TaskStatus?
   toStatus   TaskStatus?
   message    String
