@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: velozity-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: velozity
+      POSTGRES_PASSWORD: velozity
+      POSTGRES_DB: velozity
+    ports:
+      - '5433:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U velozity -d velozity']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./server
+    container_name: velozity-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://velozity:velozity@db:5432/velozity?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_access_secret_change_me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_me}
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL_DAYS: 7
+      CORS_ORIGIN: http://localhost:5173
+      COOKIE_DOMAIN: localhost
+      COOKIE_SECURE: 'false'
+      OVERDUE_CRON: '*/5 * * * *'
+      SEED_ON_START: 'true'
+    ports:
+      - '4000:4000'
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_URL: http://localhost:4000
+    container_name: velozity-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '5173:80'
+
+volumes:
+  db-data:
