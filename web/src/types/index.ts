@@ -11,7 +11,8 @@ export type ActivityType =
   | 'TASK_UPDATED'
   | 'TASK_OVERDUE'
   | 'TASK_DELETED'
-  | 'MEMBER_JOINED';
+  | 'MEMBER_JOINED'
+  | 'MEMBER_REMOVED';
 
 export type NotificationType =
   | 'TASK_ASSIGNED'
@@ -33,14 +34,12 @@ export type AccessRequest = {
   decisionReason: string | null;
   createdAt: string;
   reviewedAt: string | null;
-  project: { id: string; name: string } | null;
-  manager: { id: string; name: string; email: string } | null;
+  preferredProject: { id: string; name: string; managerName: string } | null;
   reviewedBy: { id: string; name: string } | null;
 };
 
 export type SignupOptions = {
-  managers: { id: string; name: string }[];
-  projects: { id: string; name: string; managerId: string }[];
+  projects: { id: string; name: string }[];
 };
 
 export type User = {

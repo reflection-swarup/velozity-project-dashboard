@@ -17,7 +17,7 @@ export const list = async (req: Request, res: Response) => {
 };
 
 export const approve = async (req: Request, res: Response) => {
-  const body = req.body as { role?: Role; projectId?: string };
+  const body = req.body as { role?: Role };
   res.json(await service.approve(currentUser(req), req.params.id as string, body));
 };
 

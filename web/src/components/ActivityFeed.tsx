@@ -19,6 +19,7 @@ const TYPE_TONE: Record<ActivityType, string> = {
   TASK_OVERDUE: 'bg-danger',
   TASK_DELETED: 'bg-subtle',
   MEMBER_JOINED: 'bg-accent',
+  MEMBER_REMOVED: 'bg-subtle',
 };
 
 // The server ships the sentence already formatted, so the client only appends

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRequestAccess, useSignupOptions } from '../hooks/queries';
 import { Button } from '../components/ui/Button';
@@ -22,7 +22,7 @@ const ROLE_COPY: Record<RequestableRole, { label: string; blurb: string }> = {
 export const SignupPage = () => {
   const options = useSignupOptions();
   const requestAccess = useRequestAccess();
-  const [submitted, setSubmitted] = useState<{ name: string; reviewer: string } | null>(null);
+  const [submitted, setSubmitted] = useState<{ name: string } | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -35,16 +35,6 @@ export const SignupPage = () => {
   });
 
   const projects = options.data?.projects ?? [];
-  const managers = options.data?.managers ?? [];
-
-  // Picking a project decides the reviewer, because a developer joins under
-  // that project's own manager.
-  const impliedManager = useMemo(() => {
-    const project = projects.find((entry) => entry.id === form.projectId);
-    if (!project) return null;
-    return managers.find((manager) => manager.id === project.managerId) ?? null;
-  }, [projects, managers, form.projectId]);
-
   const passwordsMatch = form.password === form.confirm;
 
   const submit = (event: React.FormEvent) => {
@@ -57,21 +47,10 @@ export const SignupPage = () => {
         email: form.email.trim().toLowerCase(),
         password: form.password,
         requestedRole: form.requestedRole,
-        ...(form.requestedRole === 'DEVELOPER' && form.projectId
-          ? { projectId: form.projectId }
-          : {}),
+        ...(form.projectId ? { preferredProjectId: form.projectId } : {}),
         ...(form.note.trim() ? { note: form.note.trim() } : {}),
       },
-      {
-        onSuccess: () =>
-          setSubmitted({
-            name: form.name.trim(),
-            reviewer:
-              form.requestedRole === 'DEVELOPER' && impliedManager
-                ? impliedManager.name
-                : 'an administrator',
-          }),
-      },
+      { onSuccess: () => setSubmitted({ name: form.name.trim() }) },
     );
   };
 
@@ -84,13 +63,14 @@ export const SignupPage = () => {
           </span>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink">Request sent</h1>
           <p className="mt-3 text-md text-muted">
-            Thanks {submitted.name}. {submitted.reviewer} has been notified and will review your
+            Thanks {submitted.name}. An administrator has been notified and will review your
             access. You will be able to sign in with the password you chose as soon as it is
             approved.
           </p>
           <p className="mt-4 rounded-lg bg-raised px-4 py-3 text-[13px] text-muted">
-            No account exists yet. Roles are granted by a reviewer rather than chosen at signup, so
-            nobody can give themselves access they should not have.
+            No account exists yet. The role is granted by an administrator rather than chosen here,
+            so nobody can give themselves access they should not have. Once you are in, a project
+            manager adds you to the projects you will work on.
           </p>
           <Link to="/" className="mt-6 inline-block">
             <Button variant="secondary">Back to the overview</Button>
@@ -108,7 +88,7 @@ export const SignupPage = () => {
           <span>
             <span className="block text-xl font-bold tracking-tight text-ink">Request access</span>
             <span className="mt-1 block text-md text-muted">
-              Tell us who you are and where you fit, and a reviewer will grant your role
+              Tell us who you are and an administrator will grant your role
             </span>
           </span>
         </Link>
@@ -197,37 +177,27 @@ export const SignupPage = () => {
             </div>
           </fieldset>
 
-          {form.requestedRole === 'DEVELOPER' ? (
-            <Field
-              label="Which project are you joining?"
-              htmlFor="signup-project"
-              hint={
-                impliedManager
-                  ? `${impliedManager.name} manages this project and will review your request`
-                  : 'Your request goes to whoever manages the project you pick'
-              }
+          <Field
+            label="Which project are you interested in joining?"
+            htmlFor="signup-project"
+            hint="Optional. This only tells the reviewer where you expect to work — a project manager adds you to projects after your account exists."
+          >
+            <Select
+              id="signup-project"
+              disabled={options.isPending}
+              value={form.projectId}
+              onChange={(event) => setForm({ ...form, projectId: event.target.value })}
             >
-              <Select
-                id="signup-project"
-                required
-                disabled={options.isPending}
-                value={form.projectId}
-                onChange={(event) => setForm({ ...form, projectId: event.target.value })}
-              >
-                <option value="">{options.isPending ? 'Loading projects' : 'Select a project'}</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          ) : (
-            <p className="rounded-lg bg-raised px-3 py-3 text-[13px] text-muted">
-              Manager access is reviewed by an administrator, who assigns your projects once you
-              are set up. Use the note below if there is a client or account you are joining for.
-            </p>
-          )}
+              <option value="">
+                {options.isPending ? 'Loading projects' : 'No preference'}
+              </option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
           <Field
             label="Anything the reviewer should know?"
@@ -253,8 +223,8 @@ export const SignupPage = () => {
           </Button>
 
           <p className="text-center text-[13px] text-subtle">
-            Requesting access does not create an account. A reviewer grants the role, so it cannot
-            be self-assigned.
+            Requesting access does not create an account. An administrator grants the role, so it
+            cannot be self-assigned.
           </p>
         </form>
 

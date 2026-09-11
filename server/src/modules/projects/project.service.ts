@@ -1,8 +1,9 @@
 import type { Prisma, ProjectStatus, TaskStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
-import { badRequest, forbidden, notFound } from '../../lib/errors';
+import { badRequest, conflict, forbidden, notFound } from '../../lib/errors';
 import type { AuthUser } from '../../middleware/auth';
 import { broadcastActivity, recordActivity } from '../activity/activity.service';
+import { pushNotification, queueNotification } from '../notifications/notification.service';
 import { assertProjectManageable, assertProjectVisible, projectScopeFilter } from './project.access';
 
 const projectInclude = {
@@ -209,22 +210,77 @@ export const remove = async (user: AuthUser, id: string) => {
   await prisma.project.delete({ where: { id } });
 };
 
+// Onboarding decides someone's role; this decides who works on what. A manager
+// can only do it on a project they own, which assertProjectManageable enforces.
 export const addMember = async (user: AuthUser, id: string, userId: string) => {
-  await assertProjectManageable(user, id);
+  const project = await assertProjectManageable(user, id);
 
   const member = await prisma.user.findUnique({ where: { id: userId } });
   if (!member) throw notFound('User not found');
+  if (member.role !== 'DEVELOPER') throw badRequest('Only developers are added to a project team');
+  if (!member.isActive) throw badRequest('That account is not active');
 
-  await prisma.projectMember.upsert({
-    where: { projectId_userId: { projectId: id, userId } },
-    create: { projectId: id, userId },
-    update: {},
+  const already = await prisma.projectMember.count({ where: { projectId: id, userId } });
+  if (already > 0) throw conflict('They are already on this project');
+
+  const { activity, notification } = await prisma.$transaction(async (tx) => {
+    await tx.projectMember.create({ data: { projectId: id, userId } });
+
+    const log = await recordActivity(tx, {
+      type: 'MEMBER_JOINED',
+      projectId: project.id,
+      projectName: project.name,
+      managerId: project.managerId,
+      assigneeIdAtEvent: userId,
+      actorId: user.id,
+      actorName: user.name,
+      message: `${user.name} added ${member.name} to ${project.name}`,
+    });
+
+    const queued = await queueNotification(tx, {
+      userId,
+      type: 'TASK_ASSIGNED',
+      title: 'Added to a project',
+      body: `${user.name} added you to ${project.name}`,
+      projectId: project.id,
+    });
+
+    return { activity: log, notification: queued };
   });
+
+  broadcastActivity(activity, {
+    projectId: project.id,
+    managerId: project.managerId,
+    assigneeId: userId,
+  });
+  await pushNotification(notification);
 
   return { id: member.id, name: member.name, email: member.email, role: member.role };
 };
 
 export const removeMember = async (user: AuthUser, id: string, userId: string) => {
-  await assertProjectManageable(user, id);
-  await prisma.projectMember.deleteMany({ where: { projectId: id, userId } });
+  const project = await assertProjectManageable(user, id);
+
+  const member = await prisma.user.findUnique({ where: { id: userId } });
+  const removed = await prisma.projectMember.deleteMany({ where: { projectId: id, userId } });
+  if (removed.count === 0) throw notFound('They are not on this project');
+
+  const activity = await prisma.$transaction((tx) =>
+    recordActivity(tx, {
+      type: 'MEMBER_REMOVED',
+      projectId: project.id,
+      projectName: project.name,
+      managerId: project.managerId,
+      assigneeIdAtEvent: userId,
+      actorId: user.id,
+      actorName: user.name,
+      message: `${user.name} removed ${member?.name ?? 'a member'} from ${project.name}`,
+    }),
+  );
+
+  broadcastActivity(activity, {
+    projectId: project.id,
+    managerId: project.managerId,
+    assigneeId: userId,
+  });
 };

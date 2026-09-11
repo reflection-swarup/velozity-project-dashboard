@@ -96,8 +96,9 @@ npm run dev                   # http://localhost:5173
 
 ## Features
 
-- **Self-service onboarding with approval** — anyone can request access and say which project
-  and manager they belong under, but the role is granted by a reviewer, never self-assigned.
+- **Self-service onboarding with approval** — anyone can request access, but an admin grants the
+  role; it is never self-assigned. Project managers then add developers to the projects they own,
+  so one developer can work under several managers.
 - **Three roles with genuinely different applications** — admin, project manager and developer,
   enforced server-side rather than hidden in the interface.
 - **Projects and tasks** — clients, projects, and tasks with title, description, assignee, status
@@ -357,7 +358,8 @@ WebSocket rooms whose membership was itself authorised server-side.
 | Activity | Global | Own projects | Own tasks |
 | Notifications | Own | Own | Own |
 | Presence | Global count | — | — |
-| Access requests | Review all | Review developer requests for their own projects | — |
+| Onboarding requests | Review and grant roles | — | — |
+| Project team | Add or remove on any project | Add or remove on **their own** projects | — |
 
 In detail:
 
@@ -397,67 +399,129 @@ API with a modified token. Two independent layers:
 
 ## Joining the workspace
 
-The brief puts user management under the Admin role, which is right but not enough on its own —
-an agency needs people to be able to ask for access. A public signup that lets you pick your own
-role would be privilege escalation by design: anyone could self-grant Project Manager. So signup
-creates a **request**, and somebody with the authority to grant that role approves it.
+The brief puts user management under the Admin role, which is right but not sufficient on its own
+— an agency needs people to be able to ask for access. A public signup where you pick your own
+role would be privilege escalation by design, so signup creates a **request** and an admin grants
+the role.
+
+There are two separate relationships here, and keeping them separate is what makes the model
+clean:
+
+| Decision | Who owns it | What it establishes |
+|---|---|---|
+| **Onboarding** | Admin | *what* someone is — a Developer or a Project Manager |
+| **Project membership** | The project manager who owns the project | *who works with whom* |
+
+```
+                        ┌──────────────┐
+                        │    Admin     │
+                        └──────┬───────┘
+                               │ approves the onboarding request,
+                               │ granting a role and nothing else
+                    ┌──────────┴──────────┐
+                    ▼                     ▼
+               Developer           Project Manager
+                    │                     │
+                    │                creates and owns
+                    │                     │
+                    │                     ▼
+                    │                  Project
+                    │                     │
+                    └────────► the owning manager adds
+                               the developer to that project
+                                          │
+                                          ▼
+                               developer sees the project,
+                               and only their own tasks in it
+```
+
+Because membership is a separate, ongoing decision, one developer naturally works under several
+managers at once:
+
+```
+Developer A
+   ├── Kanto Fleet Tracker    → added by Neha  (she owns it)
+   └── Lumen Patient Portal   → added by Ravi  (he owns it)
+```
+
+Neither manager can reach into the other's project to do it.
+
+### The signup request
 
 ```
   /signup  (public, rate limited)
       |
       |  name, email, password, role wanted,
-      |  which project (developers), optional note
+      |  optionally a project they are interested in, optional note
       v
   access_requests row, status PENDING
-      |                         no user account exists yet,
-      |                         so the request cannot sign in
+      |                    no user account exists yet,
+      |                    so the request cannot sign in
       v
-  reviewer is notified
-      |
-      |-- developer request  -> the manager who owns that project, or any admin
-      |-- manager request    -> admins only
+  admins notified
       v
-  approve                                   reject
-      |                                        |
-      v                                        v
-  user created with the granted role      status REJECTED
-  added to the project as a member        reason recorded
-  MEMBER_JOINED written to the feed       no account created
-  welcome notification queued
-      |
+  approve                               reject
+      |                                    |
+      v                                    v
+  user created with the granted role   status REJECTED
+  welcome notification queued          reason recorded
+      |                                no account created
       v
   they sign in with the password they chose at request time
+      |
+      v
+  a project manager adds them to a project they own
 ```
 
-A manager applicant is not asked who they report to. A project manager reports to the admin or
-operations lead, not to a peer manager, and the answer would have had no effect on routing — a
-manager request is reviewed by an admin regardless. Leaving the field in would have collected
-data the system then ignored, and it was also the only place a requester could have influenced
-who reviewed them.
+The project on the form is a **preference, not an assignment** — it tells the reviewer where the
+person expects to work and grants nothing. That is why the field is optional and labelled
+"Which project are you interested in joining?".
 
-**The rules that make this safe**
+A manager applicant is not asked who they report to. A project manager reports to the admin or
+operations lead rather than to a peer manager, and since onboarding is an admin decision the
+answer would have changed nothing. It was also the only place a requester could have influenced
+who reviewed them, so removing it closed that off.
+
+### The rules that make this safe
 
 | Rule | Enforced by |
 |---|---|
 | `ADMIN` cannot be requested | the request schema only accepts `PROJECT_MANAGER` or `DEVELOPER` |
-| A developer request must name a project | schema refinement |
-| The request is routed to that project's own manager | the manager is read from the project row; the form cannot name a reviewer at all |
-| A manager request goes to admins | it has no project, so no manager is attached |
-| A manager can only review developer requests addressed to them | `assertReviewable` |
-| A manager can never grant the manager role | checked again at approval, not just at listing |
-| Only an admin can grant a role other than the one requested | approval guard |
-| A manager can only add people to projects they own | project ownership re-checked at approval |
+| Only an admin can grant a role | `assertReviewer`, on list, approve and reject alike |
+| A project manager cannot grant a role | `403` — granting a role creates an account, which is an org-level act |
+| A developer has no onboarding queue at all | `403` |
 | A pending or rejected request cannot sign in | no `users` row exists until approval |
 | A request cannot be reviewed twice | status checked inside the approval path |
-| Developers have no review queue at all | role gate plus an empty scope |
+| A manager can only add developers to projects they own | `assertProjectManageable` |
+| Only developers join a project team | role checked on add |
+| The same developer cannot be added twice | `409` |
+| A manager cannot remove somebody from another manager's project | `assertProjectManageable` |
 
 The password is hashed with argon2 **at request time** and never returned by any endpoint, so
-approval does not need a second password step and there is no invite-link email to build.
+approval needs no second password step and there is no invite email to build.
+
+### What membership does and does not grant
+
+Adding a developer to a project widens what **projects** they can see. It deliberately does not
+widen what **tasks** or **activity** they can see:
+
+| | Before being added | After being added |
+|---|---|---|
+| Sees the project | no | yes |
+| Sees their own tasks on it | yes | yes |
+| Sees another developer's tasks on it | **no** | **no** |
+| Sees another developer's activity on it | **no** | **no** |
+| Can join the project's live feed room | **no** | **no** — events arrive on their personal channel |
+
+Task and activity scopes remain assignee-based (`taskScopeFilter`, `activityScope`), so team
+membership never becomes a way around the isolation the brief asks for. The smoke suite asserts
+this directly: a freshly added member sees the project, 0 tasks, and no task events belonging to
+anyone else.
 
 The signup form needs something to choose from, so `GET /api/access-requests/options` is public
-and returns **only project ids and names, and manager ids and names** — no client details, no
-task counts, no email addresses. That is a deliberate trade-off: an invitation-only flow would
-leak nothing, at the cost of nobody being able to ask for access. It is listed under
+and returns **only project ids and names** — no client details, no managers, no emails, no task
+counts. That is a deliberate trade-off: an invitation-only flow would leak nothing, at the cost
+of nobody being able to request access. It is listed under
 [Known limitations](#known-limitations).
 
 `/api/auth/login` and `/api/access-requests` are the only routes reachable without a token, so
@@ -799,9 +863,9 @@ Returns `{ items, nextCursor, total }`.
 |---|---|---|
 | GET | `/api/access-requests/options` | **public**, rate limited — project and manager names only |
 | POST | `/api/access-requests` | **public**, rate limited — creates a pending request, never an account |
-| GET | `/api/access-requests?status=` | Admin all; PM only developer requests addressed to them |
-| POST | `/api/access-requests/:id/approve` | Admin any; PM only developer requests on their own projects |
-| POST | `/api/access-requests/:id/reject` | same scoping as approve, reason recorded |
+| GET | `/api/access-requests?status=` | **Admin only** |
+| POST | `/api/access-requests/:id/approve` | **Admin only** — creates the account, grants the role |
+| POST | `/api/access-requests/:id/reject` | **Admin only**, reason recorded |
 
 ### Activity, notifications, dashboard
 
@@ -983,8 +1047,8 @@ origin, and both must be set or the session silently fails to restore on reload.
   Per-device cursors would be more precise.
 - **The feed loads newest-first with a cursor**, not a live-tailing subscription with
   backpressure. At a much higher event rate the client would want to batch renders.
-- **The public signup options endpoint lists project and manager names.** The form needs
-  something to choose from, and it returns ids and names only — no client details, emails or task
+- **The public signup options endpoint lists project names.** The form needs something to choose
+  from, and it returns project ids and names only — no managers, client details, emails or task
   counts. An invitation-only flow would leak nothing, at the cost of nobody being able to request
   access. That trade-off is deliberate and would be worth revisiting for a real deployment.
 - **Rate limits are in-process.** `express-rate-limit` keeps its counters in memory, so behind
@@ -1020,11 +1084,10 @@ de-duplicates.
 
 Two decisions followed. The activity log stores the finished sentence and the assignee at event
 time, so REST catch-up and socket events render identically, and reassigning a task never hands
-its history to someone new. The REST feed uses the mirror-image scope, so a reload shows exactly
-what the socket would have pushed.
+its history to someone new. The REST feed uses the mirror-image scope, so a reload shows what the
+socket would have pushed.
 
 I would compose every role scope with `AND` from the start. I originally spread the scope and the
 caller's filters into one object, which let `?assigneeId=<another developer>` overwrite the scope
 rather than narrow it — a real vulnerability my tests missed because they never passed that
-parameter. Scopes now combine so filters can only narrow, and regression tests attack it
-directly.
+parameter. Scopes now combine so a filter can only narrow, and the tests attack it directly.

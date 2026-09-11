@@ -61,7 +61,7 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const projects = useProjects();
   const notifications = useNotifications();
   const myOpenTasks = useTasks('status=TODO,IN_PROGRESS,IN_REVIEW&limit=1');
-  const canReview = user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER';
+  const canReview = user?.role === 'ADMIN';
   const accessRequests = useAccessRequests('PENDING', canReview);
 
   if (!user) return null;
@@ -103,7 +103,7 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
       to: '/requests',
       label: 'Access requests',
       icon: IconShield,
-      roles: ['ADMIN', 'PROJECT_MANAGER'],
+      roles: ['ADMIN'],
       badge: accessRequests.data?.pendingCount ?? 0,
       badgeTone: 'danger',
     },

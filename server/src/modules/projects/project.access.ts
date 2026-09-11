@@ -10,7 +10,15 @@ export const projectScopeFilter = (user: AuthUser) => {
     case 'PROJECT_MANAGER':
       return { managerId: user.id };
     case 'DEVELOPER':
-      return { tasks: { some: { assigneeId: user.id } } };
+      // Either a manager put them on the team, or they hold a task here. Note
+      // this widens sight of the *project* only; task and activity scopes stay
+      // assignee based, so a member still cannot see another developer's work.
+      return {
+        OR: [
+          { members: { some: { userId: user.id } } },
+          { tasks: { some: { assigneeId: user.id } } },
+        ],
+      };
   }
 };
 
@@ -25,10 +33,15 @@ export const assertProjectVisible = async (user: AuthUser, projectId: string): P
     return project;
   }
 
-  const assigned = await prisma.task.count({
-    where: { projectId, assigneeId: user.id },
-  });
-  if (assigned === 0) throw forbidden('You have no tasks on this project');
+  const [membership, assigned] = await Promise.all([
+    prisma.projectMember.count({ where: { projectId, userId: user.id } }),
+    prisma.task.count({ where: { projectId, assigneeId: user.id } }),
+  ]);
+
+  if (membership === 0 && assigned === 0) {
+    throw forbidden('You are not on this project');
+  }
+
   return project;
 };
 

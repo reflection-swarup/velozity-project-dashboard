@@ -42,6 +42,7 @@ enum ActivityType {
   TASK_OVERDUE
   TASK_DELETED
   MEMBER_JOINED
+  MEMBER_REMOVED
 }
 
 enum NotificationType {
@@ -76,7 +77,6 @@ model User {
   activities       ActivityLog[]    @relation("ActivityActor")
   notifications    Notification[]
   refreshTokens    RefreshToken[]
-  requestedBy      AccessRequest[]  @relation("RequestedManager")
   reviewedRequests AccessRequest[]  @relation("RequestReviewer")
 
   @@index([role])
@@ -209,28 +209,27 @@ model ActivityLog {
 // somebody with the authority to grant the role approves it, so nobody can
 // self-assign a permission level.
 model AccessRequest {
-  id              String              @id @default(uuid())
-  name            String
-  email           String
-  passwordHash    String
-  requestedRole   Role
-  projectId       String?
-  managerId       String?
-  note            String?
-  status          AccessRequestStatus @default(PENDING)
-  reviewedById    String?
-  reviewedAt      DateTime?
-  decisionReason  String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id                 String              @id @default(uuid())
+  name               String
+  email              String
+  passwordHash       String
+  requestedRole      Role
+  // A preference only. Onboarding grants the role; a project manager decides
+  // project membership separately, on a project they own.
+  preferredProjectId String?
+  note               String?
+  status             AccessRequestStatus @default(PENDING)
+  reviewedById       String?
+  reviewedAt         DateTime?
+  decisionReason     String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
-  project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  manager    User?    @relation("RequestedManager", fields: [managerId], references: [id], onDelete: SetNull)
-  reviewedBy User?    @relation("RequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  preferredProject Project? @relation(fields: [preferredProjectId], references: [id], onDelete: SetNull)
+  reviewedBy       User?    @relation("RequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt(sort: Desc)])
-  @@index([managerId, status])
-  @@index([projectId, status])
+  @@index([preferredProjectId, status])
   @@index([email])
   @@map("access_requests")
 }

@@ -76,7 +76,7 @@ export const App = () => (
       <Route
         path="requests"
         element={
-          <RequireRole roles={['ADMIN', 'PROJECT_MANAGER']}>
+          <RequireRole roles={['ADMIN']}>
             <AccessRequestsPage />
           </RequireRole>
         }

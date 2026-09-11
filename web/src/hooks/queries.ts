@@ -32,6 +32,7 @@ import type {
   Task,
   TaskPriority,
   TaskStatus,
+  User,
 } from '../types';
 
 export const useDashboard = () =>
@@ -302,8 +303,7 @@ export const useRequestAccess = () =>
       email: string;
       password: string;
       requestedRole: RequestableRole;
-      projectId?: string;
-      managerId?: string;
+      preferredProjectId?: string;
       note?: string;
     }) => api.post<{ request: AccessRequest }>('/api/access-requests', input),
   });
@@ -324,7 +324,7 @@ export const useAccessRequests = (status?: AccessRequestStatus, enabled = true) 
 export const useApproveAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: string; role?: RequestableRole; projectId?: string }) =>
+    mutationFn: ({ id, ...body }: { id: string; role?: RequestableRole }) =>
       api.post<{ request: AccessRequest }>(`/api/access-requests/${id}/approve`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accessRequestKeys.all });
@@ -340,5 +340,29 @@ export const useRejectAccessRequest = () => {
     mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
       api.post<{ request: AccessRequest }>(`/api/access-requests/${id}/reject`, { reason }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: accessRequestKeys.all }),
+  });
+};
+
+export const useAddProjectMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, userId }: { projectId: string; userId: string }) =>
+      api.post<{ member: User }>(`/api/projects/${projectId}/members`, { userId }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
+  });
+};
+
+export const useRemoveProjectMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, userId }: { projectId: string; userId: string }) =>
+      api.delete<void>(`/api/projects/${projectId}/members/${userId}`),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
   });
 };

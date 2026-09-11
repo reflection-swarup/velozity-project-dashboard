@@ -4,19 +4,16 @@ import { z } from 'zod';
 // from the team page, never requested through the public form.
 export const requestableRoleEnum = z.enum(['PROJECT_MANAGER', 'DEVELOPER']);
 
-export const createAccessRequestSchema = z
-  .object({
-    name: z.string().trim().min(2).max(80),
-    email: z.string().trim().toLowerCase().email(),
-    password: z.string().min(8).max(128),
-    requestedRole: requestableRoleEnum,
-    projectId: z.string().uuid().optional(),
-    note: z.string().trim().max(500).optional(),
-  })
-  .refine((value) => value.requestedRole !== 'DEVELOPER' || Boolean(value.projectId), {
-    path: ['projectId'],
-    message: 'Choose the project you are joining',
-  });
+export const createAccessRequestSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  email: z.string().trim().toLowerCase().email(),
+  password: z.string().min(8).max(128),
+  requestedRole: requestableRoleEnum,
+  // Optional, and a preference only. It tells the reviewer where the person
+  // expects to work; it grants nothing.
+  preferredProjectId: z.string().uuid().optional(),
+  note: z.string().trim().max(500).optional(),
+});
 
 export const listAccessRequestsQuerySchema = z.object({
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
@@ -24,7 +21,6 @@ export const listAccessRequestsQuerySchema = z.object({
 
 export const approveSchema = z.object({
   role: requestableRoleEnum.optional(),
-  projectId: z.string().uuid().optional(),
 });
 
 export const rejectSchema = z.object({

@@ -4,10 +4,8 @@ import clsx from 'clsx';
 import {
   useAccessRequests,
   useApproveAccessRequest,
-  useProjects,
   useRejectAccessRequest,
 } from '../hooks/queries';
-import { useAuth } from '../auth/AuthProvider';
 import { PageHeader, Section } from '../components/layout/AppShell';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -32,19 +30,14 @@ const ApproveDialog = ({
   request: AccessRequest | null;
   onClose: () => void;
 }) => {
-  const { hasRole } = useAuth();
-  const projects = useProjects();
   const approve = useApproveAccessRequest();
-  const [role, setRole] = useState<RequestableRole>('DEVELOPER');
-  const [projectId, setProjectId] = useState('');
-
-  const open = Boolean(request);
+  const [role, setRole] = useState<RequestableRole | ''>('');
 
   return (
     <Modal
-      open={open}
+      open={Boolean(request)}
       title={request ? `Approve ${request.name}` : 'Approve'}
-      description="Approving creates the account with the role you grant here."
+      description="This creates the account and grants the role. Project membership is decided separately by whoever manages the project."
       onClose={onClose}
       footer={
         <>
@@ -56,12 +49,13 @@ const ApproveDialog = ({
             onClick={() =>
               request &&
               approve.mutate(
+                { id: request.id, ...(role && role !== request.requestedRole ? { role } : {}) },
                 {
-                  id: request.id,
-                  ...(hasRole('ADMIN') && role !== request.requestedRole ? { role } : {}),
-                  ...(projectId ? { projectId } : {}),
+                  onSuccess: () => {
+                    setRole('');
+                    onClose();
+                  },
                 },
-                { onSuccess: onClose },
               )
             }
           >
@@ -75,62 +69,46 @@ const ApproveDialog = ({
           <FormError error={approve.error} />
 
           <dl className="divide-y divide-line rounded-lg bg-raised px-3 text-md">
-            <div className="flex justify-between py-2">
+            <div className="flex justify-between gap-3 py-2">
               <dt className="text-muted">Email</dt>
-              <dd className="font-medium text-ink">{request.email}</dd>
+              <dd className="truncate font-medium text-ink">{request.email}</dd>
             </div>
-            <div className="flex justify-between py-2">
+            <div className="flex justify-between gap-3 py-2">
               <dt className="text-muted">Requested</dt>
               <dd className="font-medium text-ink">{ROLE_LABELS[request.requestedRole]}</dd>
             </div>
-            <div className="flex justify-between py-2">
-              <dt className="text-muted">Project</dt>
-              <dd className="font-medium text-ink">{request.project?.name ?? 'None'}</dd>
+            <div className="flex justify-between gap-3 py-2">
+              <dt className="text-muted">Prefers to work on</dt>
+              <dd className="truncate font-medium text-ink">
+                {request.preferredProject
+                  ? `${request.preferredProject.name} (${request.preferredProject.managerName})`
+                  : 'No preference'}
+              </dd>
             </div>
           </dl>
 
-          {hasRole('ADMIN') ? (
-            <Field
-              label="Grant this role"
-              htmlFor="approve-role"
-              hint="Only an admin can grant something other than what was requested"
-            >
-              <Select
-                id="approve-role"
-                value={role === 'DEVELOPER' ? request.requestedRole : role}
-                onChange={(event) => setRole(event.target.value as RequestableRole)}
-              >
-                <option value="DEVELOPER">Developer</option>
-                <option value="PROJECT_MANAGER">Project Manager</option>
-              </Select>
-            </Field>
-          ) : (
-            <p className="rounded-lg bg-raised px-3 py-2 text-[13px] text-muted">
-              You can grant the developer role on your own projects. Manager access is approved by
-              an administrator.
-            </p>
-          )}
-
           <Field
-            label="Add to project"
-            htmlFor="approve-project"
-            hint="Leave as requested, or move them to another of your projects"
+            label="Grant this role"
+            htmlFor="approve-role"
+            hint="You can grant something other than what was requested"
           >
             <Select
-              id="approve-project"
-              value={projectId || (request.project?.id ?? '')}
-              onChange={(event) => setProjectId(event.target.value)}
+              id="approve-role"
+              value={role || request.requestedRole}
+              onChange={(event) => setRole(event.target.value as RequestableRole)}
             >
-              <option value="">{request.project ? request.project.name : 'No project'}</option>
-              {(projects.data?.items ?? [])
-                .filter((project) => project.id !== request.project?.id)
-                .map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
+              <option value="DEVELOPER">Developer</option>
+              <option value="PROJECT_MANAGER">Project Manager</option>
             </Select>
           </Field>
+
+          {request.requestedRole === 'DEVELOPER' ? (
+            <p className="rounded-lg bg-accent-soft px-3 py-2.5 text-[13px] text-accent">
+              {request.preferredProject
+                ? `${request.preferredProject.managerName} can add them to ${request.preferredProject.name} once the account exists.`
+                : 'A project manager can add them to one of their projects once the account exists.'}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </Modal>
@@ -215,17 +193,13 @@ const RequestRow = ({
         <p className="mt-0.5 text-[13px] text-muted">{request.email}</p>
 
         <p className="mt-2 text-md text-muted">
-          Asked for <span className="font-semibold text-ink">{ROLE_LABELS[request.requestedRole]}</span>
-          {request.project ? (
+          Asked for{' '}
+          <span className="font-semibold text-ink">{ROLE_LABELS[request.requestedRole]}</span>
+          {request.preferredProject ? (
             <>
-              {' '}
-              on <span className="font-semibold text-ink">{request.project.name}</span>
-            </>
-          ) : null}
-          {request.manager ? (
-            <>
-              {' '}
-              under <span className="font-semibold text-ink">{request.manager.name}</span>
+              {' · would like to work on '}
+              <span className="font-semibold text-ink">{request.preferredProject.name}</span>
+              <span className="text-subtle"> ({request.preferredProject.managerName})</span>
             </>
           ) : null}
         </p>
@@ -267,7 +241,6 @@ export const AccessRequestsPage = () => {
   const [params, setParams] = useSearchParams();
   const statusFilter = (params.get('status') as AccessRequestStatus | null) ?? undefined;
   const requests = useAccessRequests(statusFilter);
-  const { user } = useAuth();
 
   const [approving, setApproving] = useState<AccessRequest | null>(null);
   const [rejecting, setRejecting] = useState<AccessRequest | null>(null);
@@ -278,11 +251,7 @@ export const AccessRequestsPage = () => {
     <div>
       <PageHeader
         title="Access requests"
-        description={
-          user?.role === 'ADMIN'
-            ? 'Everyone who asked to join. Approving creates their account with the role you grant.'
-            : 'Developers who asked to join a project you manage. Manager access is approved by an administrator.'
-        }
+        description="Approving creates the account and grants the role. Who works on which project is decided by the manager who owns it."
         breadcrumbs={[{ label: 'Home', to: '/dashboard' }, { label: 'Access requests' }]}
         actions={
           <div className="flex rounded-lg bg-raised p-0.5">
@@ -313,9 +282,7 @@ export const AccessRequestsPage = () => {
       <Section
         title="Queue"
         description={
-          requests.data
-            ? `${requests.data.pendingCount} awaiting review`
-            : 'Loading the review queue'
+          requests.data ? `${requests.data.pendingCount} awaiting review` : 'Loading the queue'
         }
       >
         <Card className="overflow-hidden">

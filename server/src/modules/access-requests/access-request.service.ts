@@ -1,15 +1,13 @@
-import type { AccessRequest, AccessRequestStatus, Prisma, Role } from '@prisma/client';
+import type { AccessRequestStatus, Prisma, Role } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { conflict, forbidden, notFound } from '../../lib/errors';
 import type { AuthUser } from '../../middleware/auth';
-import { broadcastActivity, recordActivity } from '../activity/activity.service';
 import { hashPassword } from '../auth/auth.service';
 import { pushNotification, queueNotification } from '../notifications/notification.service';
 import type { CreateAccessRequestInput } from './access-request.schemas';
 
 const include = {
-  project: { select: { id: true, name: true } },
-  manager: { select: { id: true, name: true, email: true } },
+  preferredProject: { select: { id: true, name: true, manager: { select: { name: true } } } },
   reviewedBy: { select: { id: true, name: true } },
 } satisfies Prisma.AccessRequestInclude;
 
@@ -26,28 +24,26 @@ export const serializeRequest = (request: RequestWithRelations) => ({
   decisionReason: request.decisionReason,
   createdAt: request.createdAt.toISOString(),
   reviewedAt: request.reviewedAt?.toISOString() ?? null,
-  project: request.project,
-  manager: request.manager,
+  preferredProject: request.preferredProject
+    ? {
+        id: request.preferredProject.id,
+        name: request.preferredProject.name,
+        managerName: request.preferredProject.manager.name,
+      }
+    : null,
   reviewedBy: request.reviewedBy,
 });
 
-// The public signup form needs names to choose from, and nothing else. Only ids
-// and display names are exposed, never client details or task counts.
+// The public signup form needs something to choose from, and nothing more. Ids
+// and display names only, never client details, emails or task counts.
 export const publicOptions = async () => {
-  const [managers, projects] = await Promise.all([
-    prisma.user.findMany({
-      where: { role: 'PROJECT_MANAGER', isActive: true },
-      select: { id: true, name: true },
-      orderBy: { name: 'asc' },
-    }),
-    prisma.project.findMany({
-      where: { status: { not: 'COMPLETED' } },
-      select: { id: true, name: true, managerId: true },
-      orderBy: { name: 'asc' },
-    }),
-  ]);
+  const projects = await prisma.project.findMany({
+    where: { status: { not: 'COMPLETED' } },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  });
 
-  return { managers, projects };
+  return { projects };
 };
 
 export const create = async (input: CreateAccessRequestInput) => {
@@ -59,15 +55,10 @@ export const create = async (input: CreateAccessRequestInput) => {
   });
   if (existingRequest) throw conflict('A request for that email is already awaiting review');
 
-  const project = input.projectId
-    ? await prisma.project.findUnique({ where: { id: input.projectId } })
-    : null;
-  if (input.projectId && !project) throw notFound('Project not found');
-
-  // Always taken from the chosen project, never from the form, so a request
-  // cannot be pointed at an arbitrary reviewer. A manager request has no
-  // project and is therefore reviewed by an admin.
-  const managerId = project?.managerId ?? null;
+  if (input.preferredProjectId) {
+    const project = await prisma.project.count({ where: { id: input.preferredProjectId } });
+    if (project === 0) throw notFound('Project not found');
+  }
 
   const created = await prisma.accessRequest.create({
     data: {
@@ -75,34 +66,28 @@ export const create = async (input: CreateAccessRequestInput) => {
       email: input.email,
       passwordHash: await hashPassword(input.password),
       requestedRole: input.requestedRole,
-      projectId: input.projectId ?? null,
-      managerId,
+      preferredProjectId: input.preferredProjectId ?? null,
       note: input.note ?? null,
     },
     include,
   });
 
-  // Everyone who could act on it hears about it: the admins, plus the named
-  // manager when the request points at one.
+  // Onboarding is an organisation level decision, so only admins are notified.
   const admins = await prisma.user.findMany({
     where: { role: 'ADMIN', isActive: true },
     select: { id: true },
   });
 
-  const recipientIds = new Set(admins.map((admin) => admin.id));
-  if (managerId && created.requestedRole === 'DEVELOPER') recipientIds.add(managerId);
-
   const notifications = await prisma.$transaction((tx) =>
     Promise.all(
-      [...recipientIds].map((userId) =>
+      admins.map((admin) =>
         queueNotification(tx, {
-          userId,
+          userId: admin.id,
           type: 'ACCESS_REQUESTED',
           title: 'Access request awaiting review',
           body: `${created.name} asked to join as ${
             created.requestedRole === 'DEVELOPER' ? 'a developer' : 'a project manager'
-          }${created.project ? ` on ${created.project.name}` : ''}`,
-          projectId: created.projectId,
+          }`,
         }),
       ),
     ),
@@ -113,54 +98,28 @@ export const create = async (input: CreateAccessRequestInput) => {
   return serializeRequest(created);
 };
 
-// Admins review everything. A manager may only review developer requests
-// pointing at a project they own, and can never grant a manager role.
-const assertReviewable = (user: AuthUser, request: RequestWithRelations & { project: { id: string } | null }) => {
-  if (user.role === 'ADMIN') return;
-
-  if (user.role !== 'PROJECT_MANAGER') {
-    throw forbidden('Only an admin or a project manager can review access requests');
+// Granting a role creates an account, which is an admin decision. Project
+// managers decide project membership instead, on projects they own.
+const assertReviewer = (user: AuthUser) => {
+  if (user.role !== 'ADMIN') {
+    throw forbidden('Only an admin can review access requests');
   }
-
-  if (request.requestedRole !== 'DEVELOPER') {
-    throw forbidden('Only an admin can approve a project manager');
-  }
-
-  if (request.managerId !== user.id) {
-    throw forbidden('This request is addressed to another manager');
-  }
-};
-
-const reviewScope = (user: AuthUser): Prisma.AccessRequestWhereInput => {
-  if (user.role === 'ADMIN') return {};
-  if (user.role === 'PROJECT_MANAGER') {
-    return { requestedRole: 'DEVELOPER', managerId: user.id };
-  }
-  return { id: '__none__' };
 };
 
 export const list = async (user: AuthUser, status?: AccessRequestStatus) => {
-  if (user.role === 'DEVELOPER') throw forbidden('Developers cannot review access requests');
+  assertReviewer(user);
 
-  const requests = await prisma.accessRequest.findMany({
-    where: { AND: [reviewScope(user), status ? { status } : {}] },
-    include,
-    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-    take: 100,
-  });
-
-  const pendingCount = await prisma.accessRequest.count({
-    where: { AND: [reviewScope(user), { status: 'PENDING' }] },
-  });
+  const [requests, pendingCount] = await Promise.all([
+    prisma.accessRequest.findMany({
+      where: status ? { status } : {},
+      include,
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      take: 100,
+    }),
+    prisma.accessRequest.count({ where: { status: 'PENDING' } }),
+  ]);
 
   return { items: requests.map(serializeRequest), pendingCount };
-};
-
-export const pendingCount = async (user: AuthUser) => {
-  if (user.role === 'DEVELOPER') return 0;
-  return prisma.accessRequest.count({
-    where: { AND: [reviewScope(user), { status: 'PENDING' }] },
-  });
 };
 
 const findPending = async (id: string) => {
@@ -170,36 +129,17 @@ const findPending = async (id: string) => {
   return request;
 };
 
-export const approve = async (
-  user: AuthUser,
-  id: string,
-  overrides: { role?: Role; projectId?: string },
-) => {
+export const approve = async (user: AuthUser, id: string, overrides: { role?: Role }) => {
+  assertReviewer(user);
+
   const request = await findPending(id);
-  assertReviewable(user, request);
-
-  // Only an admin may grant a role other than the one requested, and never a
-  // role above what the reviewer could grant themselves.
   const grantedRole = overrides.role ?? request.requestedRole;
-  if (grantedRole !== request.requestedRole && user.role !== 'ADMIN') {
-    throw forbidden('Only an admin can change the role being granted');
-  }
-  if (user.role === 'PROJECT_MANAGER' && grantedRole !== 'DEVELOPER') {
-    throw forbidden('A project manager can only grant the developer role');
-  }
-
-  const projectId = overrides.projectId ?? request.projectId ?? null;
-  if (projectId) {
-    const project = await prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) throw notFound('Project not found');
-    if (user.role === 'PROJECT_MANAGER' && project.managerId !== user.id) {
-      throw forbidden('You can only add people to the projects you manage');
-    }
-  }
 
   const existingUser = await prisma.user.findUnique({ where: { email: request.email } });
   if (existingUser) throw conflict('An account with that email already exists');
 
+  // Approval creates the account and sets the role. It deliberately does not
+  // put anybody on a project: that belongs to the manager who owns it.
   const result = await prisma.$transaction(async (tx) => {
     const account = await tx.user.create({
       data: {
@@ -215,48 +155,18 @@ export const approve = async (
       data: { status: 'APPROVED', reviewedById: user.id, reviewedAt: new Date() },
     });
 
-    let activity = null;
-    if (projectId) {
-      await tx.projectMember.upsert({
-        where: { projectId_userId: { projectId, userId: account.id } },
-        create: { projectId, userId: account.id },
-        update: {},
-      });
-
-      const project = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
-      activity = await recordActivity(tx, {
-        type: 'MEMBER_JOINED',
-        projectId,
-        projectName: project.name,
-        managerId: project.managerId,
-        actorId: user.id,
-        actorName: user.name,
-        message: `${user.name} approved ${account.name} to join ${project.name}`,
-      });
-    }
-
     const notification = await queueNotification(tx, {
       userId: account.id,
       type: 'ACCESS_APPROVED',
       title: 'Welcome to Velozity',
-      body: `${user.name} approved your access as ${
-        grantedRole === 'DEVELOPER' ? 'a developer' : 'a project manager'
-      }. Sign in with the password you chose.`,
-      projectId,
+      body:
+        grantedRole === 'DEVELOPER'
+          ? `${user.name} approved your access. A project manager will add you to a project.`
+          : `${user.name} approved your access as a project manager. You can create projects now.`,
     });
 
-    return { account, activity, notification, projectId };
+    return { account, notification };
   });
-
-  if (result.activity && result.projectId) {
-    const project = await prisma.project.findUnique({ where: { id: result.projectId } });
-    if (project) {
-      broadcastActivity(result.activity, {
-        projectId: project.id,
-        managerId: project.managerId,
-      });
-    }
-  }
 
   await pushNotification(result.notification);
 
@@ -277,8 +187,9 @@ export const approve = async (
 };
 
 export const reject = async (user: AuthUser, id: string, reason?: string) => {
+  assertReviewer(user);
+
   const request = await findPending(id);
-  assertReviewable(user, request);
 
   const updated = await prisma.accessRequest.update({
     where: { id: request.id },
@@ -295,4 +206,3 @@ export const reject = async (user: AuthUser, id: string, reason?: string) => {
 };
 
 export type AccessRequestDto = ReturnType<typeof serializeRequest>;
-export type { AccessRequest };

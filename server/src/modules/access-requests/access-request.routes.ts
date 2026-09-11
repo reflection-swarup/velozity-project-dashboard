@@ -28,7 +28,7 @@ accessRequestRouter.post(
 accessRequestRouter.get(
   '/',
   requireAuth,
-  requireRole('ADMIN', 'PROJECT_MANAGER'),
+  requireRole('ADMIN'),
   validate({ query: listAccessRequestsQuerySchema }),
   asyncHandler(controller.list),
 );
@@ -36,7 +36,7 @@ accessRequestRouter.get(
 accessRequestRouter.post(
   '/:id/approve',
   requireAuth,
-  requireRole('ADMIN', 'PROJECT_MANAGER'),
+  requireRole('ADMIN'),
   validate({ params: idParamSchema, body: approveSchema }),
   asyncHandler(controller.approve),
 );
@@ -44,7 +44,7 @@ accessRequestRouter.post(
 accessRequestRouter.post(
   '/:id/reject',
   requireAuth,
-  requireRole('ADMIN', 'PROJECT_MANAGER'),
+  requireRole('ADMIN'),
   validate({ params: idParamSchema, body: rejectSchema }),
   asyncHandler(controller.reject),
 );

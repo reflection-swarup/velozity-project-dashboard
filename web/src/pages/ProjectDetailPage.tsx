@@ -8,14 +8,27 @@ import { ProjectDialog } from '../components/ProjectDialog';
 import { PageHeader, Section } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader } from '../components/ui/Card';
-import { Select } from '../components/ui/Field';
+import { Field, Select } from '../components/ui/Field';
 import { ProjectStatusBadge } from '../components/ui/Badge';
 import { Avatar, AvatarStack } from '../components/ui/Avatar';
-import { CardSkeleton, EmptyState, ErrorState, ListSkeleton } from '../components/ui/Feedback';
-import { useProject, useTasks, useUpdateProject } from '../hooks/queries';
+import {
+  CardSkeleton,
+  EmptyState,
+  ErrorState,
+  FormError,
+  ListSkeleton,
+} from '../components/ui/Feedback';
+import {
+  useAddProjectMember,
+  useProject,
+  useRemoveProjectMember,
+  useTasks,
+  useUpdateProject,
+  useUsers,
+} from '../hooks/queries';
 import { useAuth } from '../auth/AuthProvider';
 import { PROJECT_STATUS_LABELS, ROLE_LABELS, STATUS_LABELS, STATUS_ORDER } from '../lib/format';
-import type { ProjectStatus, StatusCounts } from '../types';
+import type { ProjectStatus, Role, StatusCounts } from '../types';
 
 const PROJECT_STATUSES: ProjectStatus[] = ['ACTIVE', 'ON_HOLD', 'COMPLETED'];
 
@@ -72,6 +85,107 @@ const Progress = ({ counts, total }: { counts: StatusCounts; total: number }) =>
         ))}
       </dl>
     </div>
+  );
+};
+
+const TeamPanel = ({
+  projectId,
+  members,
+  canManage,
+}: {
+  projectId: string;
+  members: { id: string; name: string; email: string; role: Role }[];
+  canManage: boolean;
+}) => {
+  const developers = useUsers(canManage ? 'DEVELOPER' : undefined);
+  const addMember = useAddProjectMember();
+  const removeMember = useRemoveProjectMember();
+  const [selected, setSelected] = useState('');
+
+  const memberIds = new Set(members.map((member) => member.id));
+  const available = (developers.data?.items ?? []).filter(
+    (developer) => developer.isActive && !memberIds.has(developer.id),
+  );
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader
+        title="Team"
+        subtitle={
+          canManage
+            ? `${members.length} on this project · you decide who works here`
+            : `${members.length} members`
+        }
+      />
+
+      {members.length > 0 ? (
+        <ul className="divide-y divide-line">
+          {members.map((member) => (
+            <li key={member.id} className="flex items-center gap-3 px-4 py-2.5">
+              <Avatar name={member.name} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-md font-medium text-ink">{member.name}</p>
+                <p className="truncate text-[13px] text-muted">{ROLE_LABELS[member.role]}</p>
+              </div>
+              {canManage ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={removeMember.isPending}
+                  onClick={() => {
+                    if (!window.confirm(`Remove ${member.name} from this project?`)) return;
+                    removeMember.mutate({ projectId, userId: member.id });
+                  }}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <EmptyState
+          title="Nobody on this project yet"
+          hint={canManage ? 'Add a developer below to get started' : undefined}
+        />
+      )}
+
+      {canManage ? (
+        <div className="space-y-2 border-t border-line px-4 py-3">
+          <FormError error={addMember.error ?? removeMember.error} />
+          <Field label="Add a developer" htmlFor="add-member">
+            <Select
+              id="add-member"
+              value={selected}
+              disabled={developers.isPending || available.length === 0}
+              onChange={(event) => setSelected(event.target.value)}
+            >
+              <option value="">
+                {available.length === 0 ? 'Everyone is already on this project' : 'Select a developer'}
+              </option>
+              {available.map((developer) => (
+                <option key={developer.id} value={developer.id}>
+                  {developer.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Button
+            size="sm"
+            className="w-full"
+            disabled={!selected || addMember.isPending}
+            onClick={() =>
+              addMember.mutate(
+                { projectId, userId: selected },
+                { onSuccess: () => setSelected('') },
+              )
+            }
+          >
+            {addMember.isPending ? 'Adding' : 'Add to project'}
+          </Button>
+        </div>
+      ) : null}
+    </Card>
   );
 };
 
@@ -206,24 +320,7 @@ export const ProjectDetailPage = () => {
             ) : null}
           </Card>
 
-          <Card className="overflow-hidden">
-            <CardHeader title="Team" subtitle={`${members.length} members`} />
-            {members.length > 0 ? (
-              <ul className="divide-y divide-line">
-                {members.map((member) => (
-                  <li key={member.id} className="flex items-center gap-3 px-4 py-2.5">
-                    <Avatar name={member.name} />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{member.name}</p>
-                      <p className="text-xs text-muted">{ROLE_LABELS[member.role]}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyState title="No members added" />
-            )}
-          </Card>
+          <TeamPanel projectId={id} members={members} canManage={Boolean(canManage)} />
         </aside>
       </div>
 
