@@ -31,7 +31,6 @@ export const SignupPage = () => {
     confirm: '',
     requestedRole: 'DEVELOPER' as RequestableRole,
     projectId: '',
-    managerId: '',
     note: '',
   });
 
@@ -60,9 +59,6 @@ export const SignupPage = () => {
         requestedRole: form.requestedRole,
         ...(form.requestedRole === 'DEVELOPER' && form.projectId
           ? { projectId: form.projectId }
-          : {}),
-        ...(form.requestedRole === 'PROJECT_MANAGER' && form.managerId
-          ? { managerId: form.managerId }
           : {}),
         ...(form.note.trim() ? { note: form.note.trim() } : {}),
       },
@@ -227,25 +223,10 @@ export const SignupPage = () => {
               </Select>
             </Field>
           ) : (
-            <Field
-              label="Who will you report to?"
-              htmlFor="signup-manager"
-              hint="Optional. A manager request is always reviewed by an administrator."
-            >
-              <Select
-                id="signup-manager"
-                disabled={options.isPending}
-                value={form.managerId}
-                onChange={(event) => setForm({ ...form, managerId: event.target.value })}
-              >
-                <option value="">No preference</option>
-                {managers.map((manager) => (
-                  <option key={manager.id} value={manager.id}>
-                    {manager.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <p className="rounded-lg bg-raised px-3 py-3 text-[13px] text-muted">
+              Manager access is reviewed by an administrator, who assigns your projects once you
+              are set up. Use the note below if there is a client or account you are joining for.
+            </p>
           )}
 
           <Field

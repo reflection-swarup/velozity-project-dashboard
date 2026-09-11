@@ -406,7 +406,7 @@ creates a **request**, and somebody with the authority to grant that role approv
   /signup  (public, rate limited)
       |
       |  name, email, password, role wanted,
-      |  which project / which manager, optional note
+      |  which project (developers), optional note
       v
   access_requests row, status PENDING
       |                         no user account exists yet,
@@ -429,13 +429,20 @@ creates a **request**, and somebody with the authority to grant that role approv
   they sign in with the password they chose at request time
 ```
 
+A manager applicant is not asked who they report to. A project manager reports to the admin or
+operations lead, not to a peer manager, and the answer would have had no effect on routing — a
+manager request is reviewed by an admin regardless. Leaving the field in would have collected
+data the system then ignored, and it was also the only place a requester could have influenced
+who reviewed them.
+
 **The rules that make this safe**
 
 | Rule | Enforced by |
 |---|---|
 | `ADMIN` cannot be requested | the request schema only accepts `PROJECT_MANAGER` or `DEVELOPER` |
 | A developer request must name a project | schema refinement |
-| The request is routed to that project's own manager | the manager is taken from the project, not from user input |
+| The request is routed to that project's own manager | the manager is read from the project row; the form cannot name a reviewer at all |
+| A manager request goes to admins | it has no project, so no manager is attached |
 | A manager can only review developer requests addressed to them | `assertReviewable` |
 | A manager can never grant the manager role | checked again at approval, not just at listing |
 | Only an admin can grant a role other than the one requested | approval guard |

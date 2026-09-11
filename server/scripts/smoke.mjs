@@ -744,6 +744,30 @@ const run = async () => {
   });
   check('a manager cannot reject a manager request', pmReject.status === 403, pmReject.status);
 
+  check(
+    'a manager request is routed to an admin, not to another manager',
+    pmRequest.body.request?.manager === null,
+    pmRequest.body.request?.manager,
+  );
+
+  const pointedAtSomeone = await req('/api/access-requests', {
+    method: 'POST',
+    body: {
+      name: 'Picks Own Reviewer',
+      email: `pointed-${Date.now()}@velozity.test`,
+      password: 'Password123!',
+      requestedRole: 'DEVELOPER',
+      projectId: raviProjectId,
+      managerId: neha.user.id,
+    },
+  });
+  check(
+    'a requester cannot choose their own reviewer',
+    pointedAtSomeone.status === 201 &&
+      pointedAtSomeone.body.request.manager?.id === ravi.user.id,
+    pointedAtSomeone.body.request?.manager,
+  );
+
   const adminReject = await req(`/api/access-requests/${pmRequest.body.request?.id}/reject`, {
     token: admin.token,
     method: 'POST',

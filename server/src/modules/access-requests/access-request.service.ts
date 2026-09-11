@@ -1,6 +1,6 @@
 import type { AccessRequest, AccessRequestStatus, Prisma, Role } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
-import { badRequest, conflict, forbidden, notFound } from '../../lib/errors';
+import { conflict, forbidden, notFound } from '../../lib/errors';
 import type { AuthUser } from '../../middleware/auth';
 import { broadcastActivity, recordActivity } from '../activity/activity.service';
 import { hashPassword } from '../auth/auth.service';
@@ -64,15 +64,10 @@ export const create = async (input: CreateAccessRequestInput) => {
     : null;
   if (input.projectId && !project) throw notFound('Project not found');
 
-  // A developer joins under the project's own manager, so the request always
-  // reaches somebody who can actually approve it.
-  const managerId = project?.managerId ?? input.managerId ?? null;
-
-  if (managerId) {
-    const manager = await prisma.user.findUnique({ where: { id: managerId } });
-    if (!manager) throw notFound('Manager not found');
-    if (manager.role === 'DEVELOPER') throw badRequest('That person does not manage projects');
-  }
+  // Always taken from the chosen project, never from the form, so a request
+  // cannot be pointed at an arbitrary reviewer. A manager request has no
+  // project and is therefore reviewed by an admin.
+  const managerId = project?.managerId ?? null;
 
   const created = await prisma.accessRequest.create({
     data: {

@@ -11,7 +11,6 @@ export const createAccessRequestSchema = z
     password: z.string().min(8).max(128),
     requestedRole: requestableRoleEnum,
     projectId: z.string().uuid().optional(),
-    managerId: z.string().uuid().optional(),
     note: z.string().trim().max(500).optional(),
   })
   .refine((value) => value.requestedRole !== 'DEVELOPER' || Boolean(value.projectId), {
