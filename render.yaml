@@ -1,0 +1,66 @@
+# Render blueprint for the API. The database lives on Neon and the web client on
+# Vercel, so this file describes one service.
+#
+# It builds the same Dockerfile the local stack uses, so what runs here is what
+# was tested locally. The entrypoint applies migrations before the server starts.
+services:
+  - type: web
+    name: velozity-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+
+      # Neon connection string, including ?sslmode=require.
+      # Set in the dashboard so it never lands in the repository.
+      - key: DATABASE_URL
+        sync: false
+
+      # Two different long random strings. generateValue asks Render to create
+      # them once and keep them, so they are never written down anywhere.
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+
+      - key: ACCESS_TOKEN_TTL
+        value: 15m
+      - key: REFRESH_TOKEN_TTL_DAYS
+        value: 7
+
+      # The Vercel domain that is allowed to call this API and hold its cookie.
+      - key: CORS_ORIGIN
+        sync: false
+      # This service's own public URL. The API compares the two to work out that
+      # it is deployed cross-site, and refuses to start on a cookie setting that
+      # would silently break the session on reload.
+      - key: PUBLIC_API_URL
+        sync: false
+
+      # Required for a cross-site refresh cookie. COOKIE_DOMAIN is deliberately
+      # left unset so the cookie stays host-only on the API domain.
+      - key: COOKIE_SECURE
+        value: true
+      - key: COOKIE_SAMESITE
+        value: none
+
+      - key: OVERDUE_CRON
+        value: '*/5 * * * *'
+
+      # Seeding truncates and rewrites the demo data. A free instance restarts
+      # whenever it wakes from sleep, so leaving this on would wipe anything a
+      # visitor changed mid-review. Seed once by hand instead.
+      - key: SEED_ON_START
+        value: false
+
+      - key: RATE_LIMIT_ENABLED
+        value: true
