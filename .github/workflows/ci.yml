@@ -34,8 +34,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # python3 rather than python, which is not guaranteed on the runner image
       - name: Colour contrast
-        run: python scripts/check-contrast.py
+        run: python3 scripts/check-contrast.py
 
       - name: Production build
         run: npx vite build
