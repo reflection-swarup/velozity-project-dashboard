@@ -18,6 +18,16 @@ services:
     healthCheckPath: /health
     autoDeployTrigger: commit
 
+    # Without this every commit rebuilds the API, including frontend-only and
+    # documentation pushes, which restarts a healthy service for no reason.
+    buildFilter:
+      paths:
+        - server/**
+        - render.yaml
+      ignoredPaths:
+        - server/scripts/**
+        - server/**/*.md
+
     envVars:
       - key: NODE_ENV
         value: production
