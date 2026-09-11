@@ -11,7 +11,7 @@ const message = (retryAfterMinutes: number) => ({
 const shared = {
   standardHeaders: true as const,
   legacyHeaders: false,
-  skip: () => env.NODE_ENV === 'test',
+  skip: () => env.NODE_ENV === 'test' || !env.RATE_LIMIT_ENABLED,
 };
 
 // Only failed attempts count, which is what throttling a login is actually

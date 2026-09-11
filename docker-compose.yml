@@ -37,6 +37,9 @@ services:
       COOKIE_DOMAIN: localhost
       COOKIE_SECURE: 'false'
       OVERDUE_CRON: ${OVERDUE_CRON:-*/5 * * * *}
+      # off for the local demo stack so the test suites can be re-run freely.
+      # the api refuses to start with this false on a real deployment.
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
       SEED_ON_START: 'true'
     ports:
       - '4000:4000'

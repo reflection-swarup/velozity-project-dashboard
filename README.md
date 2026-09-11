@@ -525,8 +525,14 @@ of nobody being able to request access. It is listed under
 [Known limitations](#known-limitations).
 
 `/api/auth/login` and `/api/access-requests` are the only routes reachable without a token, so
-both are rate limited. Login counts **failed** attempts only, which is what throttling a login is
-for — it slows credential guessing without locking out an office that shares one NAT address.
+both are rate limited: 20 failed logins per 10 minutes, and 20 signups per hour where rejected
+attempts do not consume the allowance. Login counts **failed** attempts only, which is what
+throttling a login is for — it slows credential guessing without locking out an office that
+shares one NAT address.
+
+`RATE_LIMIT_ENABLED=false` turns them off, which the local compose stack does so the test suites
+can be run repeatedly. It is not a foot-gun: the environment guard refuses to start a production
+API with limits disabled unless every CORS origin is localhost.
 
 ---
 
@@ -918,6 +924,7 @@ missing or too-short secret.
 | `COOKIE_SAMESITE` | `lax` | must be `none` when the API and web are on different domains |
 | `OVERDUE_CRON` | `*/5 * * * *` | validated before the scheduler starts |
 | `SEED_ON_START` | `false` | the Docker API sets this to `true` |
+| `RATE_LIMIT_ENABLED` | `true` | the local compose stack sets `false` so the suites can be re-run freely; the API **refuses to start** with this false on a deployment reachable from anything but localhost |
 
 | `PUBLIC_API_URL` | — | the API's own public URL; set in production so the API can tell it is deployed cross-site |
 
@@ -1052,7 +1059,10 @@ origin, and both must be set or the session silently fails to restore on reload.
   counts. An invitation-only flow would leak nothing, at the cost of nobody being able to request
   access. That trade-off is deliberate and would be worth revisiting for a real deployment.
 - **Rate limits are in-process.** `express-rate-limit` keeps its counters in memory, so behind
-  more than one instance each would hold its own allowance. A shared store (Redis) is the fix.
+  more than one instance each would hold its own allowance, and a restart clears them. A shared
+  store (Redis) is the fix. They are also disabled on the local compose stack via
+  `RATE_LIMIT_ENABLED=false` so the suites can be re-run; the environment guard prevents that
+  setting reaching a real deployment.
 - **An approved user is not emailed.** They set their password when requesting access and sign in
   once approved, which avoids building email delivery; a real deployment would send both the
   approval and rejection by email.

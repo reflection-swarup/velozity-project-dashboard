@@ -18,6 +18,13 @@ const schema = z.object({
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   PUBLIC_API_URL: z.string().url().optional(),
   OVERDUE_CRON: z.string().default('*/5 * * * *'),
+  // Off is only ever appropriate for a local stack, which the guard below
+  // enforces: a deployment reachable from anything but localhost cannot start
+  // with rate limiting disabled.
+  RATE_LIMIT_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   SEED_ON_START: z
     .enum(['true', 'false'])
     .default('false')
@@ -70,6 +77,13 @@ const guarded = schema
     message:
       'must be none when the web origin differs from the API origin, otherwise the refresh cookie is never sent',
   })
+  .refine(
+    (value) => value.RATE_LIMIT_ENABLED || value.NODE_ENV !== 'production' || isLocalOnly(value),
+    {
+      path: ['RATE_LIMIT_ENABLED'],
+      message: 'cannot be false for a deployment reachable from anywhere but localhost',
+    },
+  )
   // A deployed production API must use a Secure cookie over https origins.
   .refine(
     (value) => value.NODE_ENV !== 'production' || isLocalOnly(value) || value.COOKIE_SECURE,
