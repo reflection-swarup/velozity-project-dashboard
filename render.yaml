@@ -7,9 +7,11 @@ services:
   - type: web
     name: velozity-api
     runtime: docker
-    # starter stays awake. On free the instance sleeps after 15 minutes, which
-    # also stops the overdue scheduler, since it runs inside this process.
-    plan: starter
+    # free sleeps after 15 minutes of inactivity, which also pauses the overdue
+    # scheduler since it runs inside this process. The sweep runs again on boot,
+    # so waking the service catches up anything missed. Upgrade to starter in the
+    # dashboard if the cold start matters.
+    plan: free
     region: singapore
     dockerfilePath: ./server/Dockerfile
     dockerContext: ./server

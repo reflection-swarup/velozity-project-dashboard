@@ -1045,10 +1045,11 @@ On Render's free instance that happens after 15 minutes of inactivity, and the f
 afterwards takes roughly 40 seconds to wake it. A visitor arriving cold would wait, and would not
 see the sweep fire at all.
 
-A continuously running (paid) instance is therefore the right choice for a demo that is meant to
-be looked at unannounced. On the free tier the app still works, but plan around it: wake it and
-leave it open for a few minutes before demonstrating the scheduler, or keep it warm by pinging
-`/health` every 10 minutes from an uptime checker.
+The blueprint ships `plan: free`, which is enough for a demo. Two things make that workable: the
+scheduler runs a sweep **on boot** as well as on the cron tick, so waking the service immediately
+catches up anything that fell overdue while it slept; and pinging `/health` every ten minutes from
+a free uptime checker keeps it awake altogether. Upgrading to a paid always-on instance is a
+one-click change in the dashboard if the cold start proves annoying.
 
 This is the deployment-shaped version of a limitation already listed below: the scheduler is
 in-process, which is the right call for a single instance and the wrong one the moment there is
