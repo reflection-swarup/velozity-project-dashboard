@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { API_URL } from '../lib/api';
 import { useAuth } from '../auth/AuthProvider';
-import { activityKeys, notificationKeys, taskKeys } from '../hooks/keys';
-import type { Activity, Notification, Paginated, Task } from '../types';
+import { notificationKeys, taskKeys } from '../hooks/keys';
+import { prependActivityToFeeds } from './feedScope';
+import type { Activity, Notification, Task } from '../types';
 
 type Presence = { onlineCount: number; onlineUserIds: string[] };
 
@@ -16,8 +17,6 @@ type SocketState = {
 
 const SocketContext = createContext<SocketState | null>(null);
 
-type FeedPages = InfiniteData<Paginated<Activity>> | undefined;
-
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const { token, status } = useAuth();
   const queryClient = useQueryClient();
@@ -26,23 +25,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [presence, setPresence] = useState<Presence>({ onlineCount: 0, onlineUserIds: [] });
 
   const prependActivity = useCallback(
-    (activity: Activity) => {
-      queryClient.setQueriesData<FeedPages>({ queryKey: activityKeys.all }, (current) => {
-        if (!current) return current;
-        const alreadyThere = current.pages.some((page) =>
-          page.items.some((item) => item.id === activity.id),
-        );
-        if (alreadyThere) return current;
-
-        const [first, ...rest] = current.pages;
-        if (!first) return current;
-
-        return {
-          ...current,
-          pages: [{ ...first, items: [activity, ...first.items] }, ...rest],
-        };
-      });
-    },
+    (activity: Activity) => prependActivityToFeeds(queryClient, activity),
     [queryClient],
   );
 
