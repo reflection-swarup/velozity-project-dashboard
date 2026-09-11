@@ -18,33 +18,33 @@ import {
 const FEATURES = [
   {
     icon: IconShield,
-    title: 'Role-based access at the API',
-    body: 'Every list query is built from a role scope in its WHERE clause, so a developer request cannot return another developer’s task. Roles are read from the database on each request, never trusted from the token.',
+    title: 'Role-based access',
+    body: 'Permissions are enforced on the server, inside the query itself. A request cannot return work that belongs to someone else, whatever the client asks for.',
   },
   {
     icon: IconActivity,
     title: 'Role-filtered live feed',
-    body: 'Socket.io rooms do the filtering. Admins join a global room, a manager joins only projects they own, and developers receive events on their own personal channel — so nothing leaks by design.',
+    body: 'Admins see every project, managers see their own, developers see only their own tasks. The filtering happens before an event leaves the server.',
   },
   {
     icon: IconDatabase,
-    title: 'Activity log that is stored, not derived',
-    body: 'Each status change writes an append-only row inside the same transaction, recording who changed what, when, and who owned the task at that moment.',
+    title: 'History that is recorded, not guessed',
+    body: 'Every status change is stored with who made it and when, so the trail stays accurate even after a task is renamed or handed over.',
   },
   {
     icon: IconBell,
     title: 'Notifications without polling',
-    body: 'Assignment and review notifications persist in Postgres and the unread badge updates over the socket. No interval timers anywhere in the client.',
+    body: 'Assignment and review alerts arrive the moment they happen, and the unread badge updates itself. Nothing in the app sits on a timer.',
   },
   {
     icon: IconAlert,
-    title: 'Overdue flagged by a scheduler',
-    body: 'A node-cron sweep flags past-due work every five minutes, writes a feed entry attributed to System and notifies the assignee. Nothing is computed on page load.',
+    title: 'Overdue work flagged for you',
+    body: 'A scheduled job marks work that slipped past its due date and posts it to the feed. Nothing is calculated when a page loads.',
   },
   {
     icon: IconUsers,
-    title: 'Presence and offline catch-up',
-    body: 'Live online counts come from socket presence, and reconnecting users read the events they missed back from the database using a persisted last-seen timestamp.',
+    title: 'Presence and catch-up',
+    body: 'See who is online right now, and come back after a break to the updates you missed while you were away.',
   },
 ];
 
@@ -59,35 +59,53 @@ const ROLES = [
     name: 'Project Manager',
     email: 'ravi@velozity.test',
     summary: 'Their own projects only',
-    points: ['Create projects and assign tasks', 'Cannot see another manager’s work', 'Notified when work hits review'],
+    points: [
+      'Create projects and assign tasks',
+      'Cannot see another manager’s work',
+      'Notified when work hits review',
+    ],
   },
   {
     name: 'Developer',
     email: 'karan@velozity.test',
     summary: 'Only the work assigned to them',
-    points: ['Sees only their own tasks', 'Can change status, nothing else', 'Never receives another developer’s events'],
+    points: [
+      'Sees only their own tasks',
+      'Can change status, nothing else',
+      'Never receives another developer’s events',
+    ],
   },
 ];
 
+const METRICS = [
+  ['3', 'roles with separate access'],
+  ['0', 'client polling intervals'],
+  ['20', 'missed events replayed'],
+  ['∞', 'live activity events'],
+];
+
 const STACK = [
-  'React 19',
+  'React',
   'TypeScript',
-  'Node + Express',
+  'Node',
+  'Express',
   'PostgreSQL',
   'Prisma',
   'Socket.io',
-  'node-cron',
-  'Zod',
   'Tailwind',
   'Docker',
 ];
+
+const REPO_URL = 'https://github.com/reflection-swarup/velozity-project-dashboard';
 
 export const LandingPage = () => {
   const { status, login } = useAuth();
   const { resolved, toggle } = useTheme();
   const navigate = useNavigate();
 
-  const signInAs = async (email: string) => {
+  // The role cards are the demo entry point, so the evaluator never has to copy
+  // a credential. The seeded password stays documented in the README.
+  const continueAs = async (email: string) => {
     try {
       await login(email, 'Password123!');
       navigate('/dashboard');
@@ -97,7 +115,7 @@ export const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-full">
+    <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur">
         <div className="mx-auto flex h-18 max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Logo className="h-9 sm:h-10" />
@@ -134,48 +152,41 @@ export const LandingPage = () => {
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-4 pt-16 pb-12 sm:px-6 sm:pt-24">
+      <section className="mx-auto w-full max-w-6xl px-4 pt-16 pb-12 sm:px-6 sm:pt-24">
         <div className="animate-rise max-w-3xl">
           <span className="inline-flex items-center gap-2 rounded-full bg-accent-soft px-3.5 py-1.5 text-[13px] font-semibold text-accent">
             <span className="size-1.5 rounded-full bg-accent" />
-            Real-time · Role-based · Postgres
+            Real-time · Role-based · PostgreSQL
           </span>
 
           <h1 className="mt-6 text-4xl font-bold tracking-tight text-ink sm:text-[3.25rem] sm:leading-[1.08]">
-            The project dashboard a small agency actually runs on.
+            A real-time project dashboard built for modern teams.
           </h1>
 
           <p className="mt-5 max-w-2xl text-lg text-muted">
-            Track client projects, move tasks through review, and watch your team work in real time.
-            Three roles, each with strictly different access — enforced on the server, not hidden in
-            the interface.
+            Manage client projects, track tasks through review, and see team activity as it happens
+            — with role-based access enforced at the API.
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <Link to="/login">
+            <Link to={status === 'authenticated' ? '/dashboard' : '/login'}>
               <Button>
-                Sign in to the demo
+                Open the dashboard
                 <IconArrowRight className="size-4" />
               </Button>
             </Link>
             <a href="#roles">
-              <Button variant="secondary">Compare the three roles</Button>
+              <Button variant="secondary">Compare roles</Button>
             </a>
           </div>
 
           <p className="mt-4 text-[13px] text-subtle">
-            Seeded with 7 users, 4 projects and 21 tasks. Password for every demo account is
-            Password123!
+            Or jump straight in as any of the three roles below.
           </p>
         </div>
 
         <dl className="mt-14 grid grid-cols-2 gap-4 border-t border-line pt-8 sm:grid-cols-4">
-          {[
-            ['3', 'roles with separate access'],
-            ['0', 'polling intervals in the client'],
-            ['1', 'append-only activity log'],
-            ['20', 'missed events replayed on return'],
-          ].map(([value, label]) => (
+          {METRICS.map(([value, label]) => (
             <div key={label}>
               <dt className="text-3xl font-bold text-ink tabular-nums">{value}</dt>
               <dd className="mt-1 text-[13px] font-medium text-muted">{label}</dd>
@@ -190,8 +201,8 @@ export const LandingPage = () => {
             Three roles, three different applications
           </h2>
           <p className="mt-2.5 max-w-2xl text-md text-muted">
-            Sign in as any of them to see how far the boundaries go. The same endpoint returns
-            different data — and refuses outright when it should.
+            The same endpoints return different data for each role, and refuse outright when they
+            should. Continue as any of them to see where the boundaries sit.
           </p>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -206,20 +217,16 @@ export const LandingPage = () => {
                 <ul className="mt-4 flex-1 space-y-2">
                   {role.points.map((point) => (
                     <li key={point} className="flex gap-2.5 text-md text-muted">
-                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />
+                      <span className="mt-2 size-1.5 shrink-0 rounded-full bg-accent" />
                       {point}
                     </li>
                   ))}
                 </ul>
 
-                <p className="mt-5 font-mono text-[13px] text-subtle">{role.email}</p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => void signInAs(role.email)}
-                >
-                  Sign in as {role.name}
+                <p className="mt-5 font-mono text-xs text-subtle">{role.email}</p>
+                <Button className="mt-2.5" onClick={() => void continueAs(role.email)}>
+                  Continue as {role.name}
+                  <IconArrowRight className="size-4" />
                 </Button>
               </div>
             ))}
@@ -231,7 +238,7 @@ export const LandingPage = () => {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <h2 className="text-3xl font-bold tracking-tight text-ink">How it works</h2>
           <p className="mt-2.5 max-w-2xl text-md text-muted">
-            The parts that were interesting to build, and the decisions behind them.
+            The parts that were interesting to build.
           </p>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -269,9 +276,9 @@ export const LandingPage = () => {
                 Open two windows as different roles to watch the feed update live.
               </p>
             </div>
-            <Link to="/login">
+            <Link to={status === 'authenticated' ? '/dashboard' : '/login'}>
               <Button>
-                Sign in
+                Open the dashboard
                 <IconArrowRight className="size-4" />
               </Button>
             </Link>
@@ -279,17 +286,22 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <footer className="py-8">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 text-[13px] text-subtle sm:px-6">
-          <p>Velozity Dashboard — built for the Velozity Global Solutions technical assessment.</p>
-          <a
-            href="https://github.com/reflection-swarup/velozity-project-dashboard"
-            target="_blank"
-            rel="noreferrer"
-            className="transition-colors hover:text-ink"
-          >
-            Source on GitHub
-          </a>
+      <footer className="mt-auto border-t border-line py-8">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 sm:px-6">
+          <p className="text-md font-medium text-muted">
+            Velozity Dashboard <span className="text-subtle">·</span> Real-time project management
+          </p>
+          <div className="flex items-center gap-4 text-[13px] text-subtle">
+            <span>Technical Assessment Demo · 2026</span>
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium transition-colors hover:text-ink"
+            >
+              GitHub ↗
+            </a>
+          </div>
         </div>
       </footer>
     </div>

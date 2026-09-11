@@ -87,7 +87,7 @@ export const LoginPage = () => {
 
         <div className="mt-4 overflow-hidden rounded-xl bg-surface ring-1 ring-line">
           <p className="border-b border-line px-4 py-3 text-[13px] font-semibold text-muted">
-            Seeded accounts · password Password123!
+            Demo accounts <span className="font-normal text-subtle">· click one to fill in</span>
           </p>
           <ul className="divide-y divide-line">
             {DEMO_ACCOUNTS.map((account) => (

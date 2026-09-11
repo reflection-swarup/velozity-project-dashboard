@@ -21,6 +21,7 @@ Socket.io · node-cron · Zod · Tailwind CSS · Docker
 - [Quick start](#quick-start)
 - [Demo accounts](#demo-accounts)
 - [Tests](#tests)
+- [Architecture](#architecture)
 - [Roles and permissions](#roles-and-permissions)
 - [Database schema](#database-schema)
 - [Indexing decisions](#indexing-decisions)
@@ -92,7 +93,18 @@ npm run dev                   # http://localhost:5173
 
 ## Demo accounts
 
-Password for all of them is `Password123!`.
+```
+Admin             admin@velozity.test
+Project Manager   ravi@velozity.test
+Developer         karan@velozity.test
+
+Password          Password123!
+```
+
+The landing page also has a **Continue as Admin / Project Manager / Developer** button for each
+role, so there is nothing to copy or type to look around.
+
+Every seeded account, all with the same password:
 
 | Email | Role | What they can reach |
 |---|---|---|
@@ -222,7 +234,60 @@ scoped to a different project.
 
 ---
 
+## Architecture
+
+```
+              React + TypeScript (Vite)
+                        │
+            in-memory access token, HttpOnly refresh cookie
+                        │
+                        ▼
+              Express + TypeScript API
+                        │
+        ┌───────────────┼────────────────┐
+        ▼               ▼                ▼
+  requireAuth      requireRole     Zod validation
+  (role read       (route gate)    (body/query/params)
+   from the DB)
+        │
+        ▼
+  role scope compiled into every WHERE clause
+        │
+        ├────────────► PostgreSQL 16 + Prisma
+        │                    │
+        │              append-only activity_logs,
+        │              notifications, refresh_tokens
+        │
+        ├────────────► Socket.io rooms
+        │              feed:global · feed:project:{id} · user:{id}
+        │                    │
+        │                    └──► live feed, presence, unread badge
+        │
+        └────────────► node-cron sweep
+                       flags overdue work, writes to the feed
+```
+
+A request is authenticated, gated by role, validated, and then **narrowed by a role scope that is
+part of the SQL** — so authorisation is not a check that can be forgotten, it is the shape of the
+query. Writes persist their audit trail in the same transaction, and only then fan out over
+WebSocket rooms whose membership was itself authorised server-side.
+
+---
+
 ## Roles and permissions
+
+| Feature | Admin | Project Manager | Developer |
+|---|---|---|---|
+| Users | Full | List only | — |
+| Clients | Full | List only | — |
+| Projects | All | Own | Assigned |
+| Tasks | All | Own projects | Assigned |
+| Task fields | All | All, own projects | Status only |
+| Activity | Global | Own projects | Own tasks |
+| Notifications | Own | Own | Own |
+| Presence | Global count | — | — |
+
+In detail:
 
 | | Admin | Project Manager | Developer |
 |---|---|---|---|
