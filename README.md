@@ -40,6 +40,9 @@ Socket.io · node-cron · Zod · Tailwind CSS · Docker
 
 ## Quick start
 
+Local setup two ways: Docker for the whole stack in one command, or run the API and web app
+directly against a Postgres of your own.
+
 ### With Docker (recommended)
 
 ```bash
@@ -638,7 +641,7 @@ for.
 
 ## Architectural decisions
 
-### WebSockets: Socket.io, not native `ws`
+### WebSocket library choice: Socket.io, not native `ws`
 
 The hard requirement here is not pushing bytes, it is **filtering by role**. Socket.io gives
 rooms, acknowledgements and handshake middleware, and rooms are exactly the right primitive for
@@ -651,7 +654,7 @@ honestly.
 silently fall back to HTTP long-polling. The brief treats polling as an auto-disqualification, so
 this is asserted rather than assumed.
 
-### Background jobs: node-cron, not Bull
+### Job queue choice: node-cron, not Bull
 
 The overdue sweep is one periodic `UPDATE` over an indexed predicate, not a queue of per-item
 work with retries and backoff. Bull would mean adding Redis purely to schedule a query. node-cron
@@ -673,7 +676,7 @@ reads as the permission rule itself). Fastify is measurably faster at raw reques
 nothing here is request-rate bound — the interesting cost is a WebSocket fan-out and a handful of
 indexed queries.
 
-### Token storage
+### Token storage approach
 
 | | Access token | Refresh token |
 |---|---|---|
