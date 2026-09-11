@@ -7,7 +7,14 @@ export const Card = ({
   className?: string;
   children: React.ReactNode;
 }) => (
-  <div className={clsx('rounded-xl bg-surface ring-1 ring-line', className)}>{children}</div>
+  <div
+    className={clsx(
+      'rounded-xl bg-surface ring-1 ring-line shadow-sm shadow-black/[0.03] dark:shadow-none',
+      className,
+    )}
+  >
+    {children}
+  </div>
 );
 
 export const CardHeader = ({
@@ -48,7 +55,7 @@ export const StatCard = ({
   tone?: 'default' | 'danger' | 'success' | 'accent';
   icon?: React.ReactNode;
 }) => (
-  <Card className="px-4 py-3.5 transition-colors duration-150 hover:ring-line-strong">
+  <Card className="px-4 py-4 transition-colors duration-150 hover:ring-line-strong">
     <div className="flex items-start justify-between gap-2">
       <p className="text-xs font-bold tracking-wider text-muted uppercase">{label}</p>
       {icon ? <span className="text-subtle">{icon}</span> : null}

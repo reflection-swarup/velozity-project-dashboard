@@ -47,6 +47,32 @@ export const PageHeader = ({
   </div>
 );
 
+// One level above a Card: an eyebrow label and a rule that group related cards
+// together, so a long dashboard reads as a few sections rather than a wall of
+// identical boxes.
+export const Section = ({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) => (
+  <section className="mt-9 first:mt-0">
+    <div className="mb-3.5 flex flex-wrap items-end justify-between gap-2 border-b border-line pb-2.5">
+      <div>
+        <h2 className="text-xs font-bold tracking-[0.12em] text-subtle uppercase">{title}</h2>
+        {description ? <p className="mt-1 text-[13px] text-muted">{description}</p> : null}
+      </div>
+      {action}
+    </div>
+    {children}
+  </section>
+);
+
 export const AppShell = () => {
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();

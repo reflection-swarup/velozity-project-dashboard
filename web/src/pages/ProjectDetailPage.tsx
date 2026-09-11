@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { TaskBoard } from '../components/TaskList';
 import { TaskDialog } from '../components/TaskDialog';
-import { PageHeader } from '../components/layout/AppShell';
+import { PageHeader, Section } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader } from '../components/ui/Card';
 import { ProjectStatusBadge } from '../components/ui/Badge';
@@ -103,53 +103,56 @@ export const ProjectDetailPage = () => {
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="space-y-4">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div>
           {data.description ? (
-            <p className="max-w-3xl text-sm leading-relaxed text-muted">{data.description}</p>
+            <p className="mb-4 max-w-3xl text-md leading-relaxed text-muted">{data.description}</p>
           ) : null}
 
           {user?.role === 'DEVELOPER' ? (
-            <p className="rounded-lg bg-raised px-3 py-2 text-xs text-muted">
+            <p className="mb-4 rounded-lg bg-raised px-3 py-2.5 text-[13px] text-muted">
               This project view is scoped to the tasks assigned to you.
             </p>
           ) : null}
 
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Board</h2>
-            <Link
-              to={`/tasks?projectId=${id}`}
-              className="text-xs text-accent transition-colors hover:underline"
-            >
-              Open in task list with filters
-            </Link>
-          </div>
-
-          {tasks.isPending ? (
-            <Card className="overflow-hidden">
-              <ListSkeleton rows={4} />
-            </Card>
-          ) : null}
-          {tasks.isError ? <ErrorState error={tasks.error} /> : null}
-          {tasks.isSuccess ? (
-            tasks.data.items.length === 0 ? (
-              <Card>
-                <EmptyState
-                  title="No tasks on this project yet"
-                  hint={canManage ? 'Create the first task to get the board moving' : undefined}
-                  action={canManage ? <Button onClick={() => setDialogOpen(true)}>New task</Button> : undefined}
-                />
+          <Section
+            title="Board"
+            description="Tasks grouped by status"
+            action={
+              <Link
+                to={`/tasks?projectId=${id}`}
+                className="text-[13px] font-medium text-accent transition-colors hover:underline"
+              >
+                Open in task list with filters
+              </Link>
+            }
+          >
+            {tasks.isPending ? (
+              <Card className="overflow-hidden">
+                <ListSkeleton rows={4} />
               </Card>
-            ) : (
-              <TaskBoard tasks={tasks.data.items} />
-            )
-          ) : null}
+            ) : null}
+            {tasks.isError ? <ErrorState error={tasks.error} /> : null}
+            {tasks.isSuccess ? (
+              tasks.data.items.length === 0 ? (
+                <Card>
+                  <EmptyState
+                    title="No tasks on this project yet"
+                    hint={canManage ? 'Create the first task to get the board moving' : undefined}
+                    action={
+                      canManage ? <Button onClick={() => setDialogOpen(true)}>New task</Button> : undefined
+                    }
+                  />
+                </Card>
+              ) : (
+                <TaskBoard tasks={tasks.data.items} />
+              )
+            ) : null}
+          </Section>
 
-          <ActivityFeed
-            projectId={id}
-            title="Project activity"
-            subtitle="Live for everyone currently viewing this project"
-          />
+          <Section title="Activity" description="Live for everyone viewing this project">
+            <ActivityFeed projectId={id} title="Project activity" />
+          </Section>
         </div>
 
         <aside className="space-y-4">

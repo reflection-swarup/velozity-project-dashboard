@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { TaskList } from '../components/TaskList';
-import { PageHeader } from '../components/layout/AppShell';
+import { PageHeader, Section } from '../components/layout/AppShell';
 import { Card, CardHeader, StatCard } from '../components/ui/Card';
 import { CardSkeleton, EmptyState, ErrorState } from '../components/ui/Feedback';
 import { ProjectStatusBadge } from '../components/ui/Badge';
@@ -55,26 +55,29 @@ const AdminView = ({ data }: { data: AdminDashboard }) => {
   const { presence } = useSocket();
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="Projects" value={data.projectTotal} />
-        <StatCard label="Tasks" value={data.taskTotal} />
-        <StatCard
-          label="Overdue"
-          value={data.overdueCount}
-          tone={data.overdueCount > 0 ? 'danger' : 'default'}
-          hint="Flagged by the scheduler"
-        />
-        <StatCard
-          label="Online now"
-          value={presence.onlineCount || data.onlineCount}
-          tone="success"
-          hint="Live WebSocket presence"
-        />
-        <StatCard label="Team" value={data.userTotal} hint={`${data.clientTotal} clients`} />
-      </div>
+    <div>
+      <Section title="At a glance" description="Every project across the agency">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard label="Projects" value={data.projectTotal} />
+          <StatCard label="Tasks" value={data.taskTotal} />
+          <StatCard
+            label="Overdue"
+            value={data.overdueCount}
+            tone={data.overdueCount > 0 ? 'danger' : 'default'}
+            hint="Flagged by the scheduler"
+          />
+          <StatCard
+            label="Online now"
+            value={presence.onlineCount || data.onlineCount}
+            tone="success"
+            hint="Live WebSocket presence"
+          />
+          <StatCard label="Team" value={data.userTotal} hint={`${data.clientTotal} clients`} />
+        </div>
+      </Section>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <Section title="Breakdown" description="Where the work currently sits">
+        <div className="grid gap-4 lg:grid-cols-3">
         <Card className="overflow-hidden">
           <CardHeader title="Tasks by status" subtitle="Across every project" />
           <StatusBreakdown counts={data.tasksByStatus} />
@@ -106,31 +109,33 @@ const AdminView = ({ data }: { data: AdminDashboard }) => {
             </Link>
           </div>
         </Card>
-      </div>
+        </div>
+      </Section>
 
-      <ActivityFeed
-        title="Global activity"
-        subtitle="Every project, updating live"
-        showMissed
-      />
+      <Section title="Activity" description="Every project, updating live">
+        <ActivityFeed title="Global activity" showMissed />
+      </Section>
     </div>
   );
 };
 
 const ManagerView = ({ data }: { data: ManagerDashboard }) => (
-  <div className="space-y-4">
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard label="My projects" value={data.projectTotal} />
-      <StatCard label="Tasks" value={data.taskTotal} />
-      <StatCard
-        label="Overdue"
-        value={data.overdueCount}
-        tone={data.overdueCount > 0 ? 'danger' : 'default'}
-      />
-      <StatCard label="Due this week" value={data.upcomingThisWeek.length} />
-    </div>
+  <div>
+    <Section title="At a glance" description="Limited to the projects you manage">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="My projects" value={data.projectTotal} />
+        <StatCard label="Tasks" value={data.taskTotal} />
+        <StatCard
+          label="Overdue"
+          value={data.overdueCount}
+          tone={data.overdueCount > 0 ? 'danger' : 'default'}
+        />
+        <StatCard label="Due this week" value={data.upcomingThisWeek.length} />
+      </div>
+    </Section>
 
-    <div className="grid gap-4 lg:grid-cols-3">
+    <Section title="Projects" description="Progress on each of your projects">
+      <div className="grid gap-4 lg:grid-cols-3">
       <Card className="overflow-hidden lg:col-span-2">
         <CardHeader title="My projects" subtitle="Only projects you manage" />
         {data.projects.length === 0 ? (
@@ -167,44 +172,59 @@ const ManagerView = ({ data }: { data: ManagerDashboard }) => (
         <CardHeader title="Tasks by priority" subtitle="Your projects only" />
         <PriorityBreakdown counts={data.tasksByPriority} />
       </Card>
-    </div>
+      </div>
+    </Section>
 
-    <Card className="overflow-hidden">
-      <CardHeader title="Due this week" subtitle="Soonest first, then priority" />
-      {data.upcomingThisWeek.length === 0 ? (
-        <EmptyState title="Nothing due in the next seven days" />
-      ) : (
-        <TaskList tasks={data.upcomingThisWeek} />
-      )}
-    </Card>
+    <Section title="Schedule" description="Due in the next seven days, soonest first">
+      <Card className="overflow-hidden">
+        {data.upcomingThisWeek.length === 0 ? (
+          <EmptyState
+            title="Nothing due in the next seven days"
+            hint="Upcoming work will appear here as due dates approach"
+          />
+        ) : (
+          <TaskList tasks={data.upcomingThisWeek} />
+        )}
+      </Card>
+    </Section>
 
-    <ActivityFeed title="Team activity" subtitle="Activity from your projects" showMissed />
+    <Section title="Activity" description="Only from the projects you manage">
+      <ActivityFeed title="Team activity" showMissed />
+    </Section>
   </div>
 );
 
 const DeveloperView = ({ data }: { data: DeveloperDashboard }) => (
-  <div className="space-y-4">
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard label="My tasks" value={data.taskTotal} />
-      <StatCard label="In progress" value={data.tasksByStatus.IN_PROGRESS} />
-      <StatCard label="In review" value={data.tasksByStatus.IN_REVIEW} />
-      <StatCard
-        label="Overdue"
-        value={data.overdueCount}
-        tone={data.overdueCount > 0 ? 'danger' : 'default'}
-      />
-    </div>
+  <div>
+    <Section title="At a glance" description="Only the work assigned to you">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="My tasks" value={data.taskTotal} />
+        <StatCard label="In progress" value={data.tasksByStatus.IN_PROGRESS} />
+        <StatCard label="In review" value={data.tasksByStatus.IN_REVIEW} />
+        <StatCard
+          label="Overdue"
+          value={data.overdueCount}
+          tone={data.overdueCount > 0 ? 'danger' : 'default'}
+        />
+      </div>
+    </Section>
 
-    <Card className="overflow-hidden">
-      <CardHeader title="My tasks" subtitle="Sorted by priority, then due date" />
-      {data.tasks.length === 0 ? (
-        <EmptyState title="Nothing assigned to you yet" />
-      ) : (
-        <TaskList tasks={data.tasks} />
-      )}
-    </Card>
+    <Section title="My tasks" description="Highest priority first, then earliest due date">
+      <Card className="overflow-hidden">
+        {data.tasks.length === 0 ? (
+          <EmptyState
+            title="Nothing assigned to you yet"
+            hint="A project manager will assign work to you here"
+          />
+        ) : (
+          <TaskList tasks={data.tasks} showProject />
+        )}
+      </Card>
+    </Section>
 
-    <ActivityFeed title="My activity" subtitle="Updates on tasks assigned to you" showMissed />
+    <Section title="Activity" description="Only events on tasks assigned to you">
+      <ActivityFeed title="My activity" showMissed />
+    </Section>
   </div>
 );
 
