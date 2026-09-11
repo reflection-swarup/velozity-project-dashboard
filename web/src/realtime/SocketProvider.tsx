@@ -57,6 +57,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     socket.on('activity:new', (activity: Activity) => {
       prependActivity(activity);
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
+      // The event is a new row in that task's history, so anybody with the task
+      // open sees it appear without reloading, whoever made the change.
+      if (activity.taskId) {
+        queryClient.invalidateQueries({ queryKey: taskKeys.activity(activity.taskId) });
+      }
     });
 
     // A task event can change any list the user is looking at, so the lists are

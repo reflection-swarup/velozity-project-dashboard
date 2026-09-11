@@ -172,7 +172,7 @@ npm run verify:overdue   # 7 checks on the scheduled job itself
 
 cd ../web
 npm run typecheck        # strict, noUncheckedIndexedAccess, noUnusedLocals
-npm test                 # vitest unit tests
+npm test                 # 11 vitest unit tests
 npm run build            # production build
 ```
 

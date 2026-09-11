@@ -255,6 +255,7 @@ export const useUpdateTask = () => {
     onSuccess: (result) => {
       queryClient.setQueryData(taskKeys.detail(result.task.id), result.task);
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.activity(result.task.id) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.current });
     },
   });
@@ -268,6 +269,7 @@ export const useUpdateTaskStatus = () => {
     onSuccess: (result) => {
       queryClient.setQueryData(taskKeys.detail(result.task.id), result.task);
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.activity(result.task.id) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.current });
     },
   });
