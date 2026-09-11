@@ -99,8 +99,7 @@ export const getFeed = async (
   options: { limit: number; cursor?: string; projectId?: string },
 ) => {
   const where: Prisma.ActivityLogWhereInput = {
-    ...activityScope(user),
-    ...(options.projectId ? { projectId: options.projectId } : {}),
+    AND: [activityScope(user), options.projectId ? { projectId: options.projectId } : {}],
   };
 
   const items = await prisma.activityLog.findMany({
@@ -131,7 +130,7 @@ export const getMissed = async (user: AuthUser, limit: number) => {
   const since = record?.lastSeenAt ?? new Date(0);
 
   const items = await prisma.activityLog.findMany({
-    where: { ...activityScope(user), createdAt: { gt: since } },
+    where: { AND: [activityScope(user), { createdAt: { gt: since } }] },
     include: { project: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
     take: limit,

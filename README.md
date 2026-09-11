@@ -133,7 +133,7 @@ hers.
 ```bash
 cd server
 npm run typecheck        # tsc --noEmit, strict
-npm run smoke            # 74 checks against a running API + WebSocket
+npm run smoke            # 81 checks against a running API + WebSocket
 npm run verify:overdue   # 5 checks on the scheduled job itself
 
 cd ../web
@@ -169,6 +169,10 @@ full smoke suite against it), and **docker** (both images build).
 | No Authorization header on a protected route | `401` |
 | Well-formed id for a record that does not exist | `404`, not `403` |
 | Scope counts: admin sees 21 tasks, PM 11, developer 6 | every task the developer sees is assigned to them |
+| **Developer cannot widen their scope with `?assigneeId=<other developer>`** | `403` |
+| Developer filtering by a project outside their work still sees only their own tasks | scope holds |
+| PM cannot list another PM's projects with `?managerId=<other pm>` | `403` |
+| Developer cannot read the feed of a project they hold no tasks on | `403` |
 | Tasks can only be assigned to users whose role is `DEVELOPER` | `400` |
 
 **Real-time feed, role filtered, with catch-up (25%)**

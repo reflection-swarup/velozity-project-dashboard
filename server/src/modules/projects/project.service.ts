@@ -32,12 +32,19 @@ export const list = async (
     throw forbidden('You can only list your own projects');
   }
 
+  // Same rule as the task list: the role scope and the caller's filters are
+  // combined with AND, so a filter can never replace the scope key it shares a
+  // name with.
   const where: Prisma.ProjectWhereInput = {
-    ...projectScopeFilter(user),
-    ...(filters.status ? { status: filters.status } : {}),
-    ...(filters.clientId ? { clientId: filters.clientId } : {}),
-    ...(filters.managerId ? { managerId: filters.managerId } : {}),
-    ...(filters.search ? { name: { contains: filters.search, mode: 'insensitive' } } : {}),
+    AND: [
+      projectScopeFilter(user),
+      {
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.clientId ? { clientId: filters.clientId } : {}),
+        ...(filters.managerId ? { managerId: filters.managerId } : {}),
+        ...(filters.search ? { name: { contains: filters.search, mode: 'insensitive' } } : {}),
+      },
+    ],
   };
 
   const projects = await prisma.project.findMany({

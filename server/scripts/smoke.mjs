@@ -84,6 +84,7 @@ const run = async () => {
   const neha = await login('neha@velozity.test');
   const karan = await login('karan@velozity.test');
   const sana = await login('sana@velozity.test');
+  const meera = await login('meera@velozity.test');
 
   check('login returns an access token', typeof admin.token === 'string' && admin.token.length > 40);
   check('refresh token comes back as a cookie', Boolean(admin.cookie));
@@ -235,6 +236,81 @@ const run = async () => {
     },
   });
   check('tasks can only be assigned to developers', assignToPm.status === 400, assignToPm.body);
+
+  section('filters cannot widen a role scope');
+  const karanScoped = await req(`/api/tasks?limit=100&assigneeId=${karan.user.id}`, {
+    token: karan.token,
+  });
+  check(
+    'developer may filter by their own id',
+    karanScoped.status === 200 && karanScoped.body.total === karanTasks.body.total,
+    karanScoped.body.total,
+  );
+
+  const stealViaFilter = await req(`/api/tasks?limit=100&assigneeId=${sana.user.id}`, {
+    token: karan.token,
+  });
+  check(
+    'developer cannot read another developer via assigneeId filter',
+    stealViaFilter.status === 403,
+    { status: stealViaFilter.status, returned: stealViaFilter.body?.total },
+  );
+
+  const stealViaProjectFilter = await req(`/api/tasks?limit=100&projectId=${nehaProject.id}`, {
+    token: karan.token,
+  });
+  check(
+    'developer filtering by a foreign project still only sees their own tasks',
+    stealViaProjectFilter.body.items.every((t) => t.assignee?.id === karan.user.id),
+    stealViaProjectFilter.body.items.map((t) => t.assignee?.name),
+  );
+
+  const pmStealViaAssignee = await req(`/api/tasks?limit=100&assigneeId=${meera.user.id}`, {
+    token: ravi.token,
+  });
+  check(
+    'pm filtering by a developer outside their projects gets nothing of it',
+    pmStealViaAssignee.body.items.every((t) =>
+      raviProjects.body.items.some((p) => p.id === t.project.id),
+    ),
+    pmStealViaAssignee.body.items.map((t) => t.project.name),
+  );
+
+  const pmStealViaManagerFilter = await req(`/api/projects?managerId=${neha.user.id}`, {
+    token: ravi.token,
+  });
+  check(
+    'pm cannot list another pm projects via managerId filter',
+    pmStealViaManagerFilter.status === 403,
+    { status: pmStealViaManagerFilter.status, returned: pmStealViaManagerFilter.body?.items?.length },
+  );
+
+  const karanProjectIds = new Set(karanTasks.body.items.map((task) => task.project.id));
+  const nehaProjects = (await req('/api/projects', { token: neha.token })).body.items;
+  const untouchedProject = nehaProjects.find((project) => !karanProjectIds.has(project.id));
+  const sharedProject = nehaProjects.find((project) => karanProjectIds.has(project.id));
+
+  const feedNoTasks = await req(`/api/activity?projectId=${untouchedProject.id}`, {
+    token: karan.token,
+  });
+  check(
+    'developer cannot read the feed of a project they hold no tasks on',
+    feedNoTasks.status === 403,
+    feedNoTasks.status,
+  );
+
+  const feedShared = await req(`/api/activity?projectId=${sharedProject.id}`, {
+    token: karan.token,
+  });
+  check(
+    'on a project they do hold tasks on, a developer sees only their own task events',
+    feedShared.status === 200 &&
+      feedShared.body.items.every(
+        (item) =>
+          item.taskId === null || karanTasks.body.items.some((task) => task.id === item.taskId),
+      ),
+    feedShared.body.items?.length,
+  );
 
   section('filters and validation');
   const filtered = await req('/api/tasks?status=TODO,IN_REVIEW&priority=CRITICAL,HIGH&sort=dueDate&order=asc', {

@@ -58,13 +58,20 @@ const buildOrderBy = (
   }
 };
 
+// A developer asking for somebody else is told no, rather than being handed a
+// silently empty list.
+const assertFilterWithinScope = (user: AuthUser, query: ListTasksQuery) => {
+  if (user.role === 'DEVELOPER' && query.assigneeId && query.assigneeId !== user.id) {
+    throw forbidden('You can only filter by your own assigned tasks');
+  }
+};
+
 const buildWhere = (user: AuthUser, query: ListTasksQuery): Prisma.TaskWhereInput => {
   const dueDate: Prisma.DateTimeNullableFilter = {};
   if (query.dueFrom) dueDate.gte = query.dueFrom;
   if (query.dueTo) dueDate.lte = query.dueTo;
 
-  return {
-    ...taskScopeFilter(user),
+  const filters: Prisma.TaskWhereInput = {
     ...(query.projectId ? { projectId: query.projectId } : {}),
     ...(query.assigneeId ? { assigneeId: query.assigneeId } : {}),
     ...(query.status ? { status: { in: query.status as TaskStatus[] } } : {}),
@@ -81,9 +88,17 @@ const buildWhere = (user: AuthUser, query: ListTasksQuery): Prisma.TaskWhereInpu
         }
       : {}),
   };
+
+  // The role scope and the caller's filters are combined with AND rather than
+  // spread into one object. Spreading let a caller supplied key overwrite the
+  // scope key of the same name, so `?assigneeId=<someone else>` replaced the
+  // developer scope instead of narrowing it. Under AND a filter can only ever
+  // narrow the result set.
+  return { AND: [taskScopeFilter(user), filters] };
 };
 
 export const list = async (user: AuthUser, query: ListTasksQuery) => {
+  assertFilterWithinScope(user, query);
   const where = buildWhere(user, query);
 
   const [tasks, total] = await Promise.all([
