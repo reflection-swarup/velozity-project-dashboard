@@ -154,7 +154,7 @@ hers.
 ```bash
 cd server
 npm run typecheck        # tsc --noEmit, strict
-npm run smoke            # 94 checks against a running API + WebSocket
+npm run smoke            # 90 checks against a running API + WebSocket
 npm run attack           # 24 adversarial checks, the pre-deployment checklist
 npm run verify:overdue   # 7 checks on the scheduled job itself
 
@@ -186,9 +186,6 @@ full smoke suite against it), and **docker** (both images build).
 | Developer cannot delete a task, list users, list clients, or create a project | `403` |
 | PM cannot read or edit another PM's project | `403` |
 | PM cannot create users | `403` |
-| PM can put their own project on hold and mark it completed | `200` |
-| PM cannot change another PM's project status | `403` |
-| Developer cannot change any project status | `403` |
 | PM cannot request another PM's project feed | `403` |
 | Invalid / tampered JWT | `401` |
 | No Authorization header on a protected route | `401` |

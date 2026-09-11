@@ -1,6 +1,9 @@
 import re
 import pathlib
 
+# resolved from this file, so the checker runs from any working directory
+CSS_PATH = pathlib.Path(__file__).resolve().parent.parent / 'src' / 'index.css'
+
 
 def luminance(hex_colour):
     hex_colour = hex_colour.lstrip('#')
@@ -16,7 +19,7 @@ def ratio(fg, bg):
 
 
 def read_tokens(block):
-    css = pathlib.Path(r'D:\MyProject\velozity-project\web\src\index.css').read_text(encoding='utf-8')
+    css = CSS_PATH.read_text(encoding='utf-8')
     body = css.split(block, 1)[1].split('}', 1)[0]
     return dict(re.findall(r'--(c-[a-z-]+):\s*(#[0-9a-fA-F]{6})', body))
 
