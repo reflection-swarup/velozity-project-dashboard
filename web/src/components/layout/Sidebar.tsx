@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '../../auth/AuthProvider';
-import { useAccessRequests, useNotifications, useProjects, useTasks } from '../../hooks/queries';
+import { useNotifications, useProjects, useTasks } from '../../hooks/queries';
 import { PROJECT_STATUS_LABELS, ROLE_LABELS } from '../../lib/format';
 import { CountBadge } from '../ui/Badge';
 import { Logo } from '../ui/Logo';
@@ -12,7 +12,6 @@ import {
   IconClose,
   IconFolder,
   IconHome,
-  IconShield,
   IconUsers,
 } from '../ui/Icon';
 import type { ProjectStatus, Role } from '../../types';
@@ -61,8 +60,6 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const projects = useProjects();
   const notifications = useNotifications();
   const myOpenTasks = useTasks('status=TODO,IN_PROGRESS,IN_REVIEW&limit=1');
-  const canReview = user?.role === 'ADMIN';
-  const accessRequests = useAccessRequests('PENDING', canReview);
 
   if (!user) return null;
 
@@ -99,14 +96,6 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     },
     { to: '/clients', label: 'Clients', icon: IconBriefcase, roles: ['ADMIN'] },
     { to: '/users', label: 'Team', icon: IconUsers, roles: ['ADMIN'] },
-    {
-      to: '/requests',
-      label: 'Access requests',
-      icon: IconShield,
-      roles: ['ADMIN'],
-      badge: accessRequests.data?.pendingCount ?? 0,
-      badgeTone: 'danger',
-    },
   ];
 
   const recent = (projects.data?.items ?? []).slice(0, 4);

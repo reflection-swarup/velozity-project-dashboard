@@ -604,143 +604,53 @@ const run = async () => {
   const counted = await countEvent;
   check('unread count updates over the socket', counted?.unreadCount === 0, counted);
 
-  section('onboarding is an admin decision');
-  const publicOptions = await req('/api/access-requests/options');
-  check('signup options are public', publicOptions.status === 200, publicOptions.status);
-  check(
-    'options expose only project ids and names',
-    publicOptions.body.projects.every(
-      (project) => Object.keys(project).sort().join(',') === 'id,name',
-    ),
-    Object.keys(publicOptions.body.projects[0] ?? {}),
-  );
-  check(
-    'options do not leak the staff directory',
-    publicOptions.body.managers === undefined,
-    Object.keys(publicOptions.body),
-  );
+  section('admins provision accounts, managers staff projects');
+  const newDevEmail = `joiner-${Date.now()}@velozity.test`;
 
-  const adminRequest = await req('/api/access-requests', {
-    method: 'POST',
-    body: {
-      name: 'Wants To Be Admin',
-      email: `escalate-${Date.now()}@velozity.test`,
-      password: 'Password123!',
-      requestedRole: 'ADMIN',
-    },
-  });
-  check('nobody can request the admin role', adminRequest.status === 422, adminRequest.status);
-
-  const duplicate = await req('/api/access-requests', {
-    method: 'POST',
-    body: {
-      name: 'Already A User',
-      email: 'karan@velozity.test',
-      password: 'Password123!',
-      requestedRole: 'DEVELOPER',
-    },
-  });
-  check('an existing account cannot request again', duplicate.status === 409, duplicate.status);
-
-  const joinerEmail = `joiner-${Date.now()}@velozity.test`;
-  const joinRequest = await req('/api/access-requests', {
-    method: 'POST',
-    body: {
-      name: 'Aarav Joiner',
-      email: joinerEmail,
-      password: 'Password123!',
-      requestedRole: 'DEVELOPER',
-      preferredProjectId: raviProjectId,
-      note: 'Created by the smoke suite.',
-    },
-  });
-  check('a developer can request access', joinRequest.status === 201, joinRequest.body);
-  check(
-    'the preferred project is recorded as a preference only',
-    joinRequest.body.request.preferredProject?.id === raviProjectId,
-    joinRequest.body.request.preferredProject,
-  );
-  check(
-    'no password hash is ever returned',
-    !JSON.stringify(joinRequest.body).toLowerCase().includes('passwordhash'),
-  );
-
-  const withoutProject = await req('/api/access-requests', {
-    method: 'POST',
-    body: {
-      name: 'No Preference',
-      email: `nopref-${Date.now()}@velozity.test`,
-      password: 'Password123!',
-      requestedRole: 'DEVELOPER',
-    },
-  });
-  check('a project preference is optional', withoutProject.status === 201, withoutProject.status);
-
-  const cannotLoginYet = await req('/api/auth/login', {
-    method: 'POST',
-    body: { email: joinerEmail, password: 'Password123!' },
-  });
-  check('a pending request cannot sign in', cannotLoginYet.status === 401, cannotLoginYet.status);
-
-  for (const [who, token] of [
-    ['a project manager', ravi.token],
-    ['a developer', karan.token],
-  ]) {
-    const queue = await req('/api/access-requests', { token });
-    check(`${who} cannot see the onboarding queue`, queue.status === 403, queue.status);
-  }
-
-  const requestId = joinRequest.body.request.id;
-
-  const pmApprove = await req(`/api/access-requests/${requestId}/approve`, {
+  const pmCreates = await req('/api/users', {
     token: ravi.token,
     method: 'POST',
-    body: {},
+    body: { name: 'Not Allowed', email: newDevEmail, password: 'Password123!', role: 'DEVELOPER' },
   });
-  check('a project manager cannot grant a role', pmApprove.status === 403, pmApprove.status);
+  check('a manager cannot create an account', pmCreates.status === 403, pmCreates.status);
 
-  const devApprove = await req(`/api/access-requests/${requestId}/approve`, {
+  const devCreates = await req('/api/users', {
     token: karan.token,
     method: 'POST',
-    body: {},
+    body: { name: 'Not Allowed', email: newDevEmail, password: 'Password123!', role: 'DEVELOPER' },
   });
-  check('a developer cannot grant a role', devApprove.status === 403, devApprove.status);
+  check('a developer cannot create an account', devCreates.status === 403, devCreates.status);
 
-  const approved = await req(`/api/access-requests/${requestId}/approve`, {
+  const created = await req('/api/users', {
     token: admin.token,
     method: 'POST',
-    body: {},
+    body: { name: 'Aarav Joiner', email: newDevEmail, password: 'Password123!', role: 'DEVELOPER' },
   });
-  check(
-    'an admin approves and the account is created',
-    approved.status === 200 && approved.body.user.role === 'DEVELOPER',
-    approved.body,
-  );
-  const joiner = approved.body.user;
+  check('an admin can create a developer', created.status === 201, created.body);
+  const joiner = created.body.user;
 
-  const reApprove = await req(`/api/access-requests/${requestId}/approve`, {
+  const duplicateEmail = await req('/api/users', {
     token: admin.token,
     method: 'POST',
-    body: {},
+    body: { name: 'Same Email', email: newDevEmail, password: 'Password123!', role: 'DEVELOPER' },
   });
-  check('a reviewed request cannot be approved twice', reApprove.status === 409, reApprove.status);
+  check('the same email cannot be used twice', duplicateEmail.status === 409, duplicateEmail.status);
 
   const joinerLogin = await req('/api/auth/login', {
     method: 'POST',
-    body: { email: joinerEmail, password: 'Password123!' },
+    body: { email: newDevEmail, password: 'Password123!' },
   });
   check(
-    'the approved account signs in with the password they chose',
+    'the new account can sign in straight away',
     joinerLogin.status === 200 && joinerLogin.body.user.role === 'DEVELOPER',
     joinerLogin.status,
   );
 
   check(
-    'approval grants a role and nothing else, so no project is visible yet',
+    'a new developer starts on no projects at all',
     (await req('/api/projects', { token: joinerLogin.body.accessToken })).body.items.length === 0,
   );
 
-  section('project managers decide who works on what');
   const nehaOwnProject = (await req('/api/projects', { token: neha.token })).body.items[0];
 
   const crossAssign = await req(`/api/projects/${nehaOwnProject.id}/members`, {
@@ -821,7 +731,11 @@ const run = async () => {
     token: neha.token,
     method: 'DELETE',
   });
-  check('a manager can remove a developer from their own project', removed.status === 204, removed.status);
+  check(
+    'a manager can remove a developer from their own project',
+    removed.status === 204,
+    removed.status,
+  );
 
   const crossRemove = await req(`/api/projects/${raviProjectId}/members/${joiner.id}`, {
     token: neha.token,
@@ -843,34 +757,9 @@ const run = async () => {
     body: { isActive: false },
   });
 
-  const pmRequest = await req('/api/access-requests', {
-    method: 'POST',
-    body: {
-      name: 'Manager Hopeful',
-      email: `manager-${Date.now()}@velozity.test`,
-      password: 'Password123!',
-      requestedRole: 'PROJECT_MANAGER',
-    },
-  });
-  check('a manager request can be submitted', pmRequest.status === 201, pmRequest.status);
-
-  const pmReject = await req(`/api/access-requests/${pmRequest.body.request?.id}/reject`, {
-    token: ravi.token,
-    method: 'POST',
-    body: { reason: 'not mine to decide' },
-  });
-  check('a manager cannot reject a request either', pmReject.status === 403, pmReject.status);
-
-  const adminReject = await req(`/api/access-requests/${pmRequest.body.request?.id}/reject`, {
-    token: admin.token,
-    method: 'POST',
-    body: { reason: 'Closed by the smoke suite' },
-  });
   check(
-    'an admin can reject with a recorded reason',
-    adminReject.body.request?.status === 'REJECTED' &&
-      adminReject.body.request.decisionReason === 'Closed by the smoke suite',
-    adminReject.body.request,
+    'there is no public signup surface',
+    (await req('/api/access-requests', { method: 'POST', body: { email: 'x@y.test' } })).status === 404,
   );
 
   section('live session revocation');

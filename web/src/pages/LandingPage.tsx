@@ -158,16 +158,9 @@ export const LandingPage = () => {
                 </Button>
               </>
             ) : (
-              <>
-                <Link to="/signup">
-                  <Button size="sm" variant="ghost">
-                    Request access
-                  </Button>
-                </Link>
-                <Link to="/login">
-                  <Button size="sm">Sign in</Button>
-                </Link>
-              </>
+              <Link to="/login">
+                <Button size="sm">Sign in</Button>
+              </Link>
             )}
           </nav>
         </div>
@@ -202,12 +195,8 @@ export const LandingPage = () => {
           </div>
 
           <p className="mt-4 text-[13px] text-subtle">
-            New to the team?{' '}
-            <Link to="/signup" className="font-semibold text-accent hover:underline">
-              Request access
-            </Link>{' '}
-            and a manager or administrator grants your role. Or continue as any of the three roles
-            below to look around.
+            An internal tool, so accounts are created by an administrator rather than signed up
+            for. Continue as any of the three roles below to look around.
           </p>
         </div>
 
@@ -228,8 +217,7 @@ export const LandingPage = () => {
           </h2>
           <p className="mt-2.5 max-w-2xl text-md text-muted">
             The same endpoints return different data for each role, and refuse outright when they
-            should. Continue as any of them to see where the boundaries sit — an administrator
-            creates real accounts from the Team page.
+            should. Continue as any of them to see where the boundaries sit.
           </p>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-3">

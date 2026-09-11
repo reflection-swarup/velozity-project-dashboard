@@ -6,7 +6,6 @@ import {
 } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import {
-  accessRequestKeys,
   activityKeys,
   clientKeys,
   dashboardKeys,
@@ -16,8 +15,6 @@ import {
   userKeys,
 } from './keys';
 import type {
-  AccessRequest,
-  AccessRequestStatus,
   Activity,
   Client,
   Dashboard,
@@ -26,9 +23,7 @@ import type {
   Paginated,
   Project,
   ProjectStatus,
-  RequestableRole,
   Role,
-  SignupOptions,
   Task,
   TaskPriority,
   TaskStatus,
@@ -286,60 +281,6 @@ export const useDeleteTask = () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.current });
     },
-  });
-};
-
-export const useSignupOptions = () =>
-  useQuery({
-    queryKey: accessRequestKeys.options,
-    queryFn: ({ signal }) => api.get<SignupOptions>('/api/access-requests/options', signal),
-    staleTime: 5 * 60 * 1000,
-  });
-
-export const useRequestAccess = () =>
-  useMutation({
-    mutationFn: (input: {
-      name: string;
-      email: string;
-      password: string;
-      requestedRole: RequestableRole;
-      preferredProjectId?: string;
-      note?: string;
-    }) => api.post<{ request: AccessRequest }>('/api/access-requests', input),
-  });
-
-// enabled is explicit because developers have no review queue, and firing the
-// request for them would just produce a 403.
-export const useAccessRequests = (status?: AccessRequestStatus, enabled = true) =>
-  useQuery({
-    queryKey: accessRequestKeys.list(status),
-    enabled,
-    queryFn: ({ signal }) =>
-      api.get<{ items: AccessRequest[]; pendingCount: number }>(
-        `/api/access-requests${status ? `?status=${status}` : ''}`,
-        signal,
-      ),
-  });
-
-export const useApproveAccessRequest = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, ...body }: { id: string; role?: RequestableRole }) =>
-      api.post<{ request: AccessRequest }>(`/api/access-requests/${id}/approve`, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: accessRequestKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: projectKeys.all });
-    },
-  });
-};
-
-export const useRejectAccessRequest = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
-      api.post<{ request: AccessRequest }>(`/api/access-requests/${id}/reject`, { reason }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: accessRequestKeys.all }),
   });
 };
 

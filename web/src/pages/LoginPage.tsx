@@ -111,11 +111,8 @@ export const LoginPage = () => {
           </ul>
         </div>
 
-        <p className="mt-5 text-center text-md text-muted">
-          Need an account?{' '}
-          <Link to="/signup" className="font-semibold text-accent hover:underline">
-            Request access
-          </Link>
+        <p className="mt-5 text-center text-[13px] text-subtle">
+          Accounts are created by an administrator
         </p>
 
         <Link

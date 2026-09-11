@@ -30,12 +30,6 @@ export const userKeys = {
   list: (role?: string) => ['users', role ?? 'all'] as const,
 };
 
-export const accessRequestKeys = {
-  all: ['access-requests'] as const,
-  list: (status?: string) => ['access-requests', status ?? 'all'] as const,
-  options: ['access-requests', 'options'] as const,
-};
-
 export const clientKeys = {
   list: () => ['clients'] as const,
 };

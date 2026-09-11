@@ -7,7 +7,6 @@ import { taskRouter } from './modules/tasks/task.routes';
 import { activityRouter } from './modules/activity/activity.routes';
 import { notificationRouter } from './modules/notifications/notification.routes';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes';
-import { accessRequestRouter } from './modules/access-requests/access-request.routes';
 
 export const apiRouter = Router();
 
@@ -19,4 +18,3 @@ apiRouter.use('/tasks', taskRouter);
 apiRouter.use('/activity', activityRouter);
 apiRouter.use('/notifications', notificationRouter);
 apiRouter.use('/dashboard', dashboardRouter);
-apiRouter.use('/access-requests', accessRequestRouter);

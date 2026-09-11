@@ -96,9 +96,9 @@ npm run dev                   # http://localhost:5173
 
 ## Features
 
-- **Self-service onboarding with approval** — anyone can request access, but an admin grants the
-  role; it is never self-assigned. Project managers then add developers to the projects they own,
-  so one developer can work under several managers.
+- **Admin provisioned accounts, manager staffed projects** — an admin creates users and sets
+  roles; project managers then add developers to the projects they own, so one developer can work
+  under several managers without either manager reaching into the other's work.
 - **Three roles with genuinely different applications** — admin, project manager and developer,
   enforced server-side rather than hidden in the interface.
 - **Projects and tasks** — clients, projects, and tasks with title, description, assignee, status
@@ -358,7 +358,7 @@ WebSocket rooms whose membership was itself authorised server-side.
 | Activity | Global | Own projects | Own tasks |
 | Notifications | Own | Own | Own |
 | Presence | Global count | — | — |
-| Onboarding requests | Review and grant roles | — | — |
+| Accounts and roles | Create, edit, deactivate | — | — |
 | Project team | Add or remove on any project | Add or remove on **their own** projects | — |
 
 In detail:
@@ -399,25 +399,23 @@ API with a modified token. Two independent layers:
 
 ## Joining the workspace
 
-The brief puts user management under the Admin role, which is right but not sufficient on its own
-— an agency needs people to be able to ask for access. A public signup where you pick your own
-role would be privilege escalation by design, so signup creates a **request** and an admin grants
-the role.
+This is an internal tool, so there is **no public sign-up**. An admin creates the account from
+the Team page and that is the only way in. The brief puts user management under the Admin role,
+and a public signup endpoint would have been the single unauthenticated write in the whole API —
+the largest attack surface in the app — for no benefit an agency actually needs.
 
-There are two separate relationships here, and keeping them separate is what makes the model
-clean:
+There are two separate decisions here, and keeping them separate is what makes the model clean:
 
 | Decision | Who owns it | What it establishes |
 |---|---|---|
-| **Onboarding** | Admin | *what* someone is — a Developer or a Project Manager |
+| **The account and its role** | Admin | *what* someone is — a Developer or a Project Manager |
 | **Project membership** | The project manager who owns the project | *who works with whom* |
 
 ```
                         ┌──────────────┐
                         │    Admin     │
                         └──────┬───────┘
-                               │ approves the onboarding request,
-                               │ granting a role and nothing else
+                               │ creates the account and sets the role
                     ┌──────────┴──────────┐
                     ▼                     ▼
                Developer           Project Manager
@@ -444,61 +442,19 @@ Developer A
    └── Lumen Patient Portal   → added by Ravi  (he owns it)
 ```
 
-Neither manager can reach into the other's project to do it.
-
-### The signup request
-
-```
-  /signup  (public, rate limited)
-      |
-      |  name, email, password, role wanted,
-      |  optionally a project they are interested in, optional note
-      v
-  access_requests row, status PENDING
-      |                    no user account exists yet,
-      |                    so the request cannot sign in
-      v
-  admins notified
-      v
-  approve                               reject
-      |                                    |
-      v                                    v
-  user created with the granted role   status REJECTED
-  welcome notification queued          reason recorded
-      |                                no account created
-      v
-  they sign in with the password they chose at request time
-      |
-      v
-  a project manager adds them to a project they own
-```
-
-The project on the form is a **preference, not an assignment** — it tells the reviewer where the
-person expects to work and grants nothing. That is why the field is optional and labelled
-"Which project are you interested in joining?".
-
-A manager applicant is not asked who they report to. A project manager reports to the admin or
-operations lead rather than to a peer manager, and since onboarding is an admin decision the
-answer would have changed nothing. It was also the only place a requester could have influenced
-who reviewed them, so removing it closed that off.
+Neither manager can reach into the other's project to do it, and neither can create an account.
 
 ### The rules that make this safe
 
 | Rule | Enforced by |
 |---|---|
-| `ADMIN` cannot be requested | the request schema only accepts `PROJECT_MANAGER` or `DEVELOPER` |
-| Only an admin can grant a role | `assertReviewer`, on list, approve and reject alike |
-| A project manager cannot grant a role | `403` — granting a role creates an account, which is an org-level act |
-| A developer has no onboarding queue at all | `403` |
-| A pending or rejected request cannot sign in | no `users` row exists until approval |
-| A request cannot be reviewed twice | status checked inside the approval path |
+| Only an admin can create an account or set a role | `requireRole('ADMIN')` on the user routes |
+| A manager cannot create an account | `403` — provisioning is an organisation level act |
 | A manager can only add developers to projects they own | `assertProjectManageable` |
 | Only developers join a project team | role checked on add |
 | The same developer cannot be added twice | `409` |
 | A manager cannot remove somebody from another manager's project | `assertProjectManageable` |
-
-The password is hashed with argon2 **at request time** and never returned by any endpoint, so
-approval needs no second password step and there is no invite email to build.
+| Changing a role or deactivating an account revokes tokens **and** drops open sockets | `disconnectUser` |
 
 ### What membership does and does not grant
 
@@ -513,26 +469,14 @@ widen what **tasks** or **activity** they can see:
 | Sees another developer's activity on it | **no** | **no** |
 | Can join the project's live feed room | **no** | **no** — events arrive on their personal channel |
 
-Task and activity scopes remain assignee-based (`taskScopeFilter`, `activityScope`), so team
+Task and activity scopes stay assignee-based (`taskScopeFilter`, `activityScope`), so team
 membership never becomes a way around the isolation the brief asks for. The smoke suite asserts
-this directly: a freshly added member sees the project, 0 tasks, and no task events belonging to
+it directly: a freshly added member sees the project, 0 tasks, and no task events belonging to
 anyone else.
 
-The signup form needs something to choose from, so `GET /api/access-requests/options` is public
-and returns **only project ids and names** — no client details, no managers, no emails, no task
-counts. That is a deliberate trade-off: an invitation-only flow would leak nothing, at the cost
-of nobody being able to request access. It is listed under
-[Known limitations](#known-limitations).
-
-`/api/auth/login` and `/api/access-requests` are the only routes reachable without a token, so
-both are rate limited: 20 failed logins per 10 minutes, and 20 signups per hour where rejected
-attempts do not consume the allowance. Login counts **failed** attempts only, which is what
-throttling a login is for — it slows credential guessing without locking out an office that
-shares one NAT address.
-
-`RATE_LIMIT_ENABLED=false` turns them off, which the local compose stack does so the test suites
-can be run repeatedly. It is not a foot-gun: the environment guard refuses to start a production
-API with limits disabled unless every CORS origin is localhost.
+`/api/auth/login` is therefore the only route reachable without a token, and it is rate limited to
+20 **failed** attempts per 10 minutes. Counting only failures is what throttling a login is for —
+it slows credential guessing without locking out an office that shares one NAT address.
 
 ---
 
@@ -863,16 +807,6 @@ Filters, all shareable in a URL: `projectId` · `assigneeId` · `status=TODO,IN_
 `sort=priority|dueDate|createdAt|status` · `order=asc|desc` · `limit` (1–100) · `cursor`.
 Returns `{ items, nextCursor, total }`.
 
-### Access requests
-
-| Method | Path | Access |
-|---|---|---|
-| GET | `/api/access-requests/options` | **public**, rate limited — project and manager names only |
-| POST | `/api/access-requests` | **public**, rate limited — creates a pending request, never an account |
-| GET | `/api/access-requests?status=` | **Admin only** |
-| POST | `/api/access-requests/:id/approve` | **Admin only** — creates the account, grants the role |
-| POST | `/api/access-requests/:id/reject` | **Admin only**, reason recorded |
-
 ### Activity, notifications, dashboard
 
 | Method | Path | Notes |
@@ -1054,18 +988,14 @@ origin, and both must be set or the session silently fails to restore on reload.
   Per-device cursors would be more precise.
 - **The feed loads newest-first with a cursor**, not a live-tailing subscription with
   backpressure. At a much higher event rate the client would want to batch renders.
-- **The public signup options endpoint lists project names.** The form needs something to choose
-  from, and it returns project ids and names only — no managers, client details, emails or task
-  counts. An invitation-only flow would leak nothing, at the cost of nobody being able to request
-  access. That trade-off is deliberate and would be worth revisiting for a real deployment.
-- **Rate limits are in-process.** `express-rate-limit` keeps its counters in memory, so behind
-  more than one instance each would hold its own allowance, and a restart clears them. A shared
-  store (Redis) is the fix. They are also disabled on the local compose stack via
-  `RATE_LIMIT_ENABLED=false` so the suites can be re-run; the environment guard prevents that
-  setting reaching a real deployment.
-- **An approved user is not emailed.** They set their password when requesting access and sign in
-  once approved, which avoids building email delivery; a real deployment would send both the
-  approval and rejection by email.
+- **The login rate limit is in-process.** `express-rate-limit` keeps its counters in memory, so
+  behind more than one instance each would hold its own allowance, and a restart clears them. A
+  shared store (Redis) is the fix.
+- **There is no self-service onboarding.** An admin creates every account, which suits an
+  internal tool but means someone has to be available to do it. A request-and-approve flow, or
+  SSO against the company directory, is where this would go for a larger organisation.
+- **A new user is not emailed their credentials.** The admin sets a temporary password and passes
+  it on out of band; a real deployment would send an invitation link instead of a password.
 - **The API Docker image is 581 MB.** Prisma's query and schema engines dominate it; the runtime
   stage already installs production dependencies only and runs as a non-root user.
 - **The demo landing page hardcodes the seeded password** in its "Sign in as" buttons, which is

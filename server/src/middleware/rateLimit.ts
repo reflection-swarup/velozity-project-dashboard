@@ -24,22 +24,3 @@ export const loginLimiter = rateLimit({
   skipSuccessfulRequests: true,
   message: message(10),
 });
-
-// Signup is the only unauthenticated write in the API, so it is limited, but
-// not so tightly that a genuine onboarding wave from one office IP gets locked
-// out. Rejected attempts do not consume the allowance, since a typo should not
-// count against a real person.
-export const signupLimiter = rateLimit({
-  ...shared,
-  windowMs: 60 * 60 * 1000,
-  limit: 20,
-  skipFailedRequests: true,
-  message: message(60),
-});
-
-export const publicReadLimiter = rateLimit({
-  ...shared,
-  windowMs: 10 * 60 * 1000,
-  limit: 60,
-  message: message(10),
-});

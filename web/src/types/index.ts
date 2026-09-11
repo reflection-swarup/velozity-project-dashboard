@@ -14,33 +14,7 @@ export type ActivityType =
   | 'MEMBER_JOINED'
   | 'MEMBER_REMOVED';
 
-export type NotificationType =
-  | 'TASK_ASSIGNED'
-  | 'TASK_IN_REVIEW'
-  | 'TASK_OVERDUE'
-  | 'ACCESS_REQUESTED'
-  | 'ACCESS_APPROVED';
-
-export type RequestableRole = 'PROJECT_MANAGER' | 'DEVELOPER';
-export type AccessRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-
-export type AccessRequest = {
-  id: string;
-  name: string;
-  email: string;
-  requestedRole: RequestableRole;
-  status: AccessRequestStatus;
-  note: string | null;
-  decisionReason: string | null;
-  createdAt: string;
-  reviewedAt: string | null;
-  preferredProject: { id: string; name: string; managerName: string } | null;
-  reviewedBy: { id: string; name: string } | null;
-};
-
-export type SignupOptions = {
-  projects: { id: string; name: string }[];
-};
+export type NotificationType = 'TASK_ASSIGNED' | 'TASK_IN_REVIEW' | 'TASK_OVERDUE';
 
 export type User = {
   id: string;
