@@ -24,6 +24,7 @@ Socket.io · node-cron · Zod · Tailwind CSS · Docker
 - [Tests](#tests)
 - [Architecture](#architecture)
 - [Roles and permissions](#roles-and-permissions)
+- [Joining the workspace](#joining-the-workspace)
 - [Database schema](#database-schema)
 - [Indexing decisions](#indexing-decisions)
 - [Architectural decisions](#architectural-decisions)
@@ -95,6 +96,8 @@ npm run dev                   # http://localhost:5173
 
 ## Features
 
+- **Self-service onboarding with approval** — anyone can request access and say which project
+  and manager they belong under, but the role is granted by a reviewer, never self-assigned.
 - **Three roles with genuinely different applications** — admin, project manager and developer,
   enforced server-side rather than hidden in the interface.
 - **Projects and tasks** — clients, projects, and tasks with title, description, assignee, status
@@ -354,6 +357,7 @@ WebSocket rooms whose membership was itself authorised server-side.
 | Activity | Global | Own projects | Own tasks |
 | Notifications | Own | Own | Own |
 | Presence | Global count | — | — |
+| Access requests | Review all | Review developer requests for their own projects | — |
 
 In detail:
 
@@ -388,6 +392,70 @@ API with a modified token. Two independent layers:
    are; the database decides *what* you are. Demoting or deactivating someone takes effect on
    their next request rather than when their token expires, and a role change also revokes their
    refresh tokens.
+
+---
+
+## Joining the workspace
+
+The brief puts user management under the Admin role, which is right but not enough on its own —
+an agency needs people to be able to ask for access. A public signup that lets you pick your own
+role would be privilege escalation by design: anyone could self-grant Project Manager. So signup
+creates a **request**, and somebody with the authority to grant that role approves it.
+
+```
+  /signup  (public, rate limited)
+      |
+      |  name, email, password, role wanted,
+      |  which project / which manager, optional note
+      v
+  access_requests row, status PENDING
+      |                         no user account exists yet,
+      |                         so the request cannot sign in
+      v
+  reviewer is notified
+      |
+      |-- developer request  -> the manager who owns that project, or any admin
+      |-- manager request    -> admins only
+      v
+  approve                                   reject
+      |                                        |
+      v                                        v
+  user created with the granted role      status REJECTED
+  added to the project as a member        reason recorded
+  MEMBER_JOINED written to the feed       no account created
+  welcome notification queued
+      |
+      v
+  they sign in with the password they chose at request time
+```
+
+**The rules that make this safe**
+
+| Rule | Enforced by |
+|---|---|
+| `ADMIN` cannot be requested | the request schema only accepts `PROJECT_MANAGER` or `DEVELOPER` |
+| A developer request must name a project | schema refinement |
+| The request is routed to that project's own manager | the manager is taken from the project, not from user input |
+| A manager can only review developer requests addressed to them | `assertReviewable` |
+| A manager can never grant the manager role | checked again at approval, not just at listing |
+| Only an admin can grant a role other than the one requested | approval guard |
+| A manager can only add people to projects they own | project ownership re-checked at approval |
+| A pending or rejected request cannot sign in | no `users` row exists until approval |
+| A request cannot be reviewed twice | status checked inside the approval path |
+| Developers have no review queue at all | role gate plus an empty scope |
+
+The password is hashed with argon2 **at request time** and never returned by any endpoint, so
+approval does not need a second password step and there is no invite-link email to build.
+
+The signup form needs something to choose from, so `GET /api/access-requests/options` is public
+and returns **only project ids and names, and manager ids and names** — no client details, no
+task counts, no email addresses. That is a deliberate trade-off: an invitation-only flow would
+leak nothing, at the cost of nobody being able to ask for access. It is listed under
+[Known limitations](#known-limitations).
+
+`/api/auth/login` and `/api/access-requests` are the only routes reachable without a token, so
+both are rate limited. Login counts **failed** attempts only, which is what throttling a login is
+for — it slows credential guessing without locking out an office that shares one NAT address.
 
 ---
 
@@ -718,6 +786,16 @@ Filters, all shareable in a URL: `projectId` · `assigneeId` · `status=TODO,IN_
 `sort=priority|dueDate|createdAt|status` · `order=asc|desc` · `limit` (1–100) · `cursor`.
 Returns `{ items, nextCursor, total }`.
 
+### Access requests
+
+| Method | Path | Access |
+|---|---|---|
+| GET | `/api/access-requests/options` | **public**, rate limited — project and manager names only |
+| POST | `/api/access-requests` | **public**, rate limited — creates a pending request, never an account |
+| GET | `/api/access-requests?status=` | Admin all; PM only developer requests addressed to them |
+| POST | `/api/access-requests/:id/approve` | Admin any; PM only developer requests on their own projects |
+| POST | `/api/access-requests/:id/reject` | same scoping as approve, reason recorded |
+
 ### Activity, notifications, dashboard
 
 | Method | Path | Notes |
@@ -898,8 +976,15 @@ origin, and both must be set or the session silently fails to restore on reload.
   Per-device cursors would be more precise.
 - **The feed loads newest-first with a cursor**, not a live-tailing subscription with
   backpressure. At a much higher event rate the client would want to batch renders.
-- **No rate limiting** on the auth endpoints. `express-rate-limit` on `/api/auth/login` would be
-  the first thing to add before any real exposure.
+- **The public signup options endpoint lists project and manager names.** The form needs
+  something to choose from, and it returns ids and names only — no client details, emails or task
+  counts. An invitation-only flow would leak nothing, at the cost of nobody being able to request
+  access. That trade-off is deliberate and would be worth revisiting for a real deployment.
+- **Rate limits are in-process.** `express-rate-limit` keeps its counters in memory, so behind
+  more than one instance each would hold its own allowance. A shared store (Redis) is the fix.
+- **An approved user is not emailed.** They set their password when requesting access and sign in
+  once approved, which avoids building email delivery; a real deployment would send both the
+  approval and rejection by email.
 - **The API Docker image is 581 MB.** Prisma's query and schema engines dominate it; the runtime
   stage already installs production dependencies only and runs as a non-root user.
 - **The demo landing page hardcodes the seeded password** in its "Sign in as" buttons, which is

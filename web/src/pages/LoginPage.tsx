@@ -111,9 +111,16 @@ export const LoginPage = () => {
           </ul>
         </div>
 
+        <p className="mt-5 text-center text-md text-muted">
+          Need an account?{' '}
+          <Link to="/signup" className="font-semibold text-accent hover:underline">
+            Request access
+          </Link>
+        </p>
+
         <Link
           to="/"
-          className="mt-5 flex items-center justify-center gap-1.5 text-md font-medium text-muted transition-colors hover:text-ink"
+          className="mt-3 flex items-center justify-center gap-1.5 text-[13px] font-medium text-subtle transition-colors hover:text-ink"
         >
           Read what this project does
           <IconArrowRight className="size-3.5" />

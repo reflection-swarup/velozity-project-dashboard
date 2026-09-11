@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '../../auth/AuthProvider';
-import { useNotifications, useProjects, useTasks } from '../../hooks/queries';
+import { useAccessRequests, useNotifications, useProjects, useTasks } from '../../hooks/queries';
 import { PROJECT_STATUS_LABELS, ROLE_LABELS } from '../../lib/format';
 import { CountBadge } from '../ui/Badge';
 import { Logo } from '../ui/Logo';
@@ -12,6 +12,7 @@ import {
   IconClose,
   IconFolder,
   IconHome,
+  IconShield,
   IconUsers,
 } from '../ui/Icon';
 import type { ProjectStatus, Role } from '../../types';
@@ -60,6 +61,8 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const projects = useProjects();
   const notifications = useNotifications();
   const myOpenTasks = useTasks('status=TODO,IN_PROGRESS,IN_REVIEW&limit=1');
+  const canReview = user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER';
+  const accessRequests = useAccessRequests('PENDING', canReview);
 
   if (!user) return null;
 
@@ -96,6 +99,14 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     },
     { to: '/clients', label: 'Clients', icon: IconBriefcase, roles: ['ADMIN'] },
     { to: '/users', label: 'Team', icon: IconUsers, roles: ['ADMIN'] },
+    {
+      to: '/requests',
+      label: 'Access requests',
+      icon: IconShield,
+      roles: ['ADMIN', 'PROJECT_MANAGER'],
+      badge: accessRequests.data?.pendingCount ?? 0,
+      badgeTone: 'danger',
+    },
   ];
 
   const recent = (projects.data?.items ?? []).slice(0, 4);
@@ -148,6 +159,7 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
               <NavLink key={item.to} to={item.to} className={linkClass} onClick={onNavigate}>
                 <item.icon className="size-5 shrink-0" />
                 <span className="flex-1">{item.label}</span>
+                <CountBadge count={item.badge ?? 0} tone={item.badgeTone} />
               </NavLink>
             ))}
         </div>

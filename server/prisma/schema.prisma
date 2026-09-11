@@ -41,12 +41,21 @@ enum ActivityType {
   TASK_UPDATED
   TASK_OVERDUE
   TASK_DELETED
+  MEMBER_JOINED
 }
 
 enum NotificationType {
   TASK_ASSIGNED
   TASK_IN_REVIEW
   TASK_OVERDUE
+  ACCESS_REQUESTED
+  ACCESS_APPROVED
+}
+
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model User {
@@ -67,6 +76,8 @@ model User {
   activities       ActivityLog[]    @relation("ActivityActor")
   notifications    Notification[]
   refreshTokens    RefreshToken[]
+  requestedBy      AccessRequest[]  @relation("RequestedManager")
+  reviewedRequests AccessRequest[]  @relation("RequestReviewer")
 
   @@index([role])
   @@map("users")
@@ -117,6 +128,7 @@ model Project {
   tasks      Task[]
   members    ProjectMember[]
   activities ActivityLog[]
+  accessRequests AccessRequest[]
 
   @@index([managerId])
   @@index([clientId])
@@ -191,6 +203,36 @@ model ActivityLog {
   @@index([taskId, createdAt(sort: Desc)])
   @@index([assigneeIdAtEvent, createdAt(sort: Desc)])
   @@map("activity_logs")
+}
+
+// Self-service signup lands here rather than in users. No account exists until
+// somebody with the authority to grant the role approves it, so nobody can
+// self-assign a permission level.
+model AccessRequest {
+  id              String              @id @default(uuid())
+  name            String
+  email           String
+  passwordHash    String
+  requestedRole   Role
+  projectId       String?
+  managerId       String?
+  note            String?
+  status          AccessRequestStatus @default(PENDING)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  decisionReason  String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  manager    User?    @relation("RequestedManager", fields: [managerId], references: [id], onDelete: SetNull)
+  reviewedBy User?    @relation("RequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([managerId, status])
+  @@index([projectId, status])
+  @@index([email])
+  @@map("access_requests")
 }
 
 model Notification {

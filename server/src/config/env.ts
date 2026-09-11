@@ -32,6 +32,16 @@ const hostOf = (value: string) => {
   }
 };
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '0.0.0.0']);
+
+// A production build served to a loopback origin is a local run, not a
+// deployment, so the https and Secure rules do not apply to it.
+const isLocalOnly = (value: { CORS_ORIGIN: string }) =>
+  value.CORS_ORIGIN.split(',').every((origin) => {
+    const host = hostOf(origin);
+    return host !== null && LOCAL_HOSTS.has(host.split(':')[0] ?? '');
+  });
+
 const isCrossSite = (value: { CORS_ORIGIN: string; PUBLIC_API_URL?: string }) => {
   const apiHost = value.PUBLIC_API_URL ? hostOf(value.PUBLIC_API_URL) : null;
   if (!apiHost) return false;
@@ -60,19 +70,22 @@ const guarded = schema
     message:
       'must be none when the web origin differs from the API origin, otherwise the refresh cookie is never sent',
   })
-  // In production the refresh cookie has to be Secure, and the API has to know
-  // which origins may present it.
-  .refine((value) => value.NODE_ENV !== 'production' || value.COOKIE_SECURE, {
-    path: ['COOKIE_SECURE'],
-    message: 'must be true in production',
-  })
+  // A deployed production API must use a Secure cookie over https origins.
+  .refine(
+    (value) => value.NODE_ENV !== 'production' || isLocalOnly(value) || value.COOKIE_SECURE,
+    {
+      path: ['COOKIE_SECURE'],
+      message: 'must be true in production unless every CORS origin is localhost',
+    },
+  )
   .refine(
     (value) =>
       value.NODE_ENV !== 'production' ||
+      isLocalOnly(value) ||
       value.CORS_ORIGIN.split(',').every((origin) => origin.trim().startsWith('https://')),
     {
       path: ['CORS_ORIGIN'],
-      message: 'every production origin must be https',
+      message: 'every production origin must be https unless it is localhost',
     },
   );
 

@@ -47,6 +47,9 @@ const login = async (email) => {
     method: 'POST',
     body: { email, password: PASSWORD },
   });
+  if (res.status === 429) {
+    throw new Error(`login rate limited for ${email}; wait for the window to reset`);
+  }
   if (res.status !== 200) throw new Error(`login failed for ${email}: ${JSON.stringify(res.body)}`);
   const raw = res.setCookie.find((c) => c.startsWith('velozity_refresh='));
   return { token: res.body.accessToken, user: res.body.user, cookie: raw?.split(';')[0] };
@@ -567,6 +570,191 @@ const run = async () => {
   await req('/api/notifications/read-all', { token: (await login('sana@velozity.test')).token, method: 'PATCH' });
   const counted = await countEvent;
   check('unread count updates over the socket', counted?.unreadCount === 0, counted);
+
+  section('self service access requests');
+  const publicOptions = await req('/api/access-requests/options');
+  check('signup options are public', publicOptions.status === 200, publicOptions.status);
+  check(
+    'options expose only ids and names',
+    publicOptions.body.projects.every(
+      (project) => Object.keys(project).sort().join(',') === 'id,managerId,name',
+    ),
+    Object.keys(publicOptions.body.projects[0] ?? {}),
+  );
+
+  const adminRequest = await req('/api/access-requests', {
+    method: 'POST',
+    body: {
+      name: 'Wants To Be Admin',
+      email: `escalate-${Date.now()}@velozity.test`,
+      password: 'Password123!',
+      requestedRole: 'ADMIN',
+    },
+  });
+  check('nobody can request the admin role', adminRequest.status === 422, adminRequest.status);
+
+  const devNoProject = await req('/api/access-requests', {
+    method: 'POST',
+    body: {
+      name: 'No Project Dev',
+      email: `noproject-${Date.now()}@velozity.test`,
+      password: 'Password123!',
+      requestedRole: 'DEVELOPER',
+    },
+  });
+  check('a developer request must name a project', devNoProject.status === 422, devNoProject.status);
+
+  const duplicate = await req('/api/access-requests', {
+    method: 'POST',
+    body: {
+      name: 'Already A User',
+      email: 'karan@velozity.test',
+      password: 'Password123!',
+      requestedRole: 'DEVELOPER',
+      projectId: raviProjectId,
+    },
+  });
+  check('an existing account cannot request again', duplicate.status === 409, duplicate.status);
+
+  const newDevEmail = `joiner-${Date.now()}@velozity.test`;
+  const joinRequest = await req('/api/access-requests', {
+    method: 'POST',
+    body: {
+      name: 'Aarav Joiner',
+      email: newDevEmail,
+      password: 'Password123!',
+      requestedRole: 'DEVELOPER',
+      projectId: raviProjectId,
+      note: 'Created by the smoke suite.',
+    },
+  });
+  check('a developer can request access to a project', joinRequest.status === 201, joinRequest.body);
+  check(
+    'the request is routed to the project owner',
+    joinRequest.body.request.manager?.id === ravi.user.id,
+    joinRequest.body.request.manager,
+  );
+  check(
+    'no password hash is ever returned',
+    !JSON.stringify(joinRequest.body).toLowerCase().includes('passwordhash'),
+  );
+
+  const cannotLoginYet = await req('/api/auth/login', {
+    method: 'POST',
+    body: { email: newDevEmail, password: 'Password123!' },
+  });
+  check('a pending request cannot sign in', cannotLoginYet.status === 401, cannotLoginYet.status);
+
+  const devQueue = await req('/api/access-requests', { token: karan.token });
+  check('developers cannot see the review queue', devQueue.status === 403, devQueue.status);
+
+  const nehaQueue = await req('/api/access-requests', { token: neha.token });
+  check(
+    'a manager only sees requests addressed to them',
+    nehaQueue.body.items.every((item) => item.manager?.id === neha.user.id),
+    nehaQueue.body.items.map((item) => item.manager?.name),
+  );
+
+  const requestId = joinRequest.body.request.id;
+
+  const devApprove = await req(`/api/access-requests/${requestId}/approve`, {
+    token: karan.token,
+    method: 'POST',
+    body: {},
+  });
+  check('a developer cannot approve anything', devApprove.status === 403, devApprove.status);
+
+  const wrongPm = await req(`/api/access-requests/${requestId}/approve`, {
+    token: neha.token,
+    method: 'POST',
+    body: {},
+  });
+  check('another manager cannot approve it', wrongPm.status === 403, wrongPm.status);
+
+  const pmUpgrade = await req(`/api/access-requests/${requestId}/approve`, {
+    token: ravi.token,
+    method: 'POST',
+    body: { role: 'PROJECT_MANAGER' },
+  });
+  check('a manager cannot grant the manager role', pmUpgrade.status === 403, pmUpgrade.status);
+
+  const approved = await req(`/api/access-requests/${requestId}/approve`, {
+    token: ravi.token,
+    method: 'POST',
+    body: {},
+  });
+  check(
+    'the owning manager can approve a developer',
+    approved.status === 200 && approved.body.user.role === 'DEVELOPER',
+    approved.body,
+  );
+
+  const reApprove = await req(`/api/access-requests/${requestId}/approve`, {
+    token: admin.token,
+    method: 'POST',
+    body: {},
+  });
+  check('a reviewed request cannot be approved twice', reApprove.status === 409, reApprove.status);
+
+  const newDevLogin = await req('/api/auth/login', {
+    method: 'POST',
+    body: { email: newDevEmail, password: 'Password123!' },
+  });
+  check(
+    'the approved account signs in with the password they chose',
+    newDevLogin.status === 200 && newDevLogin.body.user.role === 'DEVELOPER',
+    newDevLogin.status,
+  );
+
+  const newDevTasks = await req('/api/tasks', { token: newDevLogin.body.accessToken });
+  check(
+    'the new developer starts with an empty, correctly scoped task list',
+    newDevTasks.status === 200 && newDevTasks.body.total === 0,
+    newDevTasks.body.total,
+  );
+
+  const newDevQueue = await req('/api/access-requests', { token: newDevLogin.body.accessToken });
+  check('the new developer has no review queue', newDevQueue.status === 403, newDevQueue.status);
+
+  await req(`/api/users/${approved.body.user.id}`, {
+    token: admin.token,
+    method: 'PATCH',
+    body: { isActive: false },
+  });
+
+  const pmRequest = await req('/api/access-requests', {
+    method: 'POST',
+    body: {
+      name: 'Manager Hopeful',
+      email: `manager-${Date.now()}@velozity.test`,
+      password: 'Password123!',
+      requestedRole: 'PROJECT_MANAGER',
+    },
+  });
+  check(
+    'a manager request can be submitted',
+    pmRequest.status === 201,
+    pmRequest.status === 429 ? 'rate limited, wait for the window to reset' : pmRequest.body,
+  );
+
+  const pmReject = await req(`/api/access-requests/${pmRequest.body.request?.id}/reject`, {
+    token: ravi.token,
+    method: 'POST',
+    body: { reason: 'not mine to decide' },
+  });
+  check('a manager cannot reject a manager request', pmReject.status === 403, pmReject.status);
+
+  const adminReject = await req(`/api/access-requests/${pmRequest.body.request?.id}/reject`, {
+    token: admin.token,
+    method: 'POST',
+    body: { reason: 'Closed by the smoke suite' },
+  });
+  check(
+    'an admin can reject with a recorded reason',
+    adminReject.body.request?.status === 'REJECTED' &&
+      adminReject.body.request.decisionReason === 'Closed by the smoke suite',
+    adminReject.body.request,
+  );
 
   section('live session revocation');
   // A throwaway account, so the seeded users keep their roles for repeat runs.

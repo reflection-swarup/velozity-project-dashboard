@@ -5,6 +5,7 @@ import { AppShell } from './components/layout/AppShell';
 import { Loading } from './components/ui/Feedback';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
@@ -13,6 +14,7 @@ import { TaskDetailPage } from './pages/TaskDetailPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { UsersPage } from './pages/UsersPage';
 import { ClientsPage } from './pages/ClientsPage';
+import { AccessRequestsPage } from './pages/AccessRequestsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import type { Role } from './types';
 
@@ -40,6 +42,7 @@ export const App = () => (
   <Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<LoginPage />} />
+    <Route path="/signup" element={<SignupPage />} />
 
     <Route
       element={
@@ -67,6 +70,14 @@ export const App = () => (
         element={
           <RequireRole roles={['ADMIN']}>
             <UsersPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="requests"
+        element={
+          <RequireRole roles={['ADMIN', 'PROJECT_MANAGER']}>
+            <AccessRequestsPage />
           </RequireRole>
         }
       />

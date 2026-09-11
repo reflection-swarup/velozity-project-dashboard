@@ -158,9 +158,16 @@ export const LandingPage = () => {
                 </Button>
               </>
             ) : (
-              <Link to="/login">
-                <Button size="sm">Sign in</Button>
-              </Link>
+              <>
+                <Link to="/signup">
+                  <Button size="sm" variant="ghost">
+                    Request access
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button size="sm">Sign in</Button>
+                </Link>
+              </>
             )}
           </nav>
         </div>
@@ -195,8 +202,12 @@ export const LandingPage = () => {
           </div>
 
           <p className="mt-4 text-[13px] text-subtle">
-            Accounts are created by an administrator, so there is no public sign-up. Continue as
-            any of the three roles below to look around.
+            New to the team?{' '}
+            <Link to="/signup" className="font-semibold text-accent hover:underline">
+              Request access
+            </Link>{' '}
+            and a manager or administrator grants your role. Or continue as any of the three roles
+            below to look around.
           </p>
         </div>
 

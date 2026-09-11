@@ -484,6 +484,49 @@ const main = async () => {
     }
   }
 
+  await prisma.accessRequest.createMany({
+    data: [
+      {
+        name: 'Ishaan Verma',
+        email: 'ishaan@velozity.test',
+        passwordHash,
+        requestedRole: 'DEVELOPER',
+        projectId: storefront!.id,
+        managerId: ravi.id,
+        note: 'Joining the storefront team this sprint, mainly on checkout.',
+        createdAt: minutesAgo(140),
+      },
+      {
+        name: 'Priya Nair',
+        email: 'priya@velozity.test',
+        passwordHash,
+        requestedRole: 'PROJECT_MANAGER',
+        managerId: null,
+        note: 'Taking over delivery for the new retail account.',
+        createdAt: minutesAgo(65),
+      },
+    ],
+  });
+
+  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
+  const pending = await prisma.accessRequest.findMany({ where: { status: 'PENDING' } });
+  for (const request of pending) {
+    const recipients = new Set(admins.map((entry) => entry.id));
+    if (request.managerId && request.requestedRole === 'DEVELOPER') recipients.add(request.managerId);
+    for (const userId of recipients) {
+      notificationRows.push({
+        userId,
+        type: 'ACCESS_REQUESTED',
+        title: 'Access request awaiting review',
+        body: `${request.name} asked to join as ${
+          request.requestedRole === 'DEVELOPER' ? 'a developer' : 'a project manager'
+        }`,
+        projectId: request.projectId,
+        createdAt: request.createdAt,
+      });
+    }
+  }
+
   await prisma.activityLog.createMany({ data: activityRows });
   await prisma.notification.createMany({ data: notificationRows });
 
@@ -494,6 +537,7 @@ const main = async () => {
     tasks: await prisma.task.count(),
     overdueTasks: await prisma.task.count({ where: { isOverdue: true } }),
     activity: await prisma.activityLog.count(),
+    accessRequests: await prisma.accessRequest.count(),
     notifications: await prisma.notification.count(),
   };
 

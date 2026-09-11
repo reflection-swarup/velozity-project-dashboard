@@ -43,6 +43,12 @@ const call = async (path, { token, method = 'GET', body, cookie } = {}) => {
 
 const login = async (email) => {
   const res = await call('/api/auth/login', { method: 'POST', body: { email, password: PASSWORD } });
+  if (res.status === 429) {
+    throw new Error(`login rate limited for ${email}; wait for the window to reset`);
+  }
+  if (res.status !== 200) {
+    throw new Error(`login failed for ${email}: ${JSON.stringify(res.body)}`);
+  }
   const raw = res.setCookie.find((c) => c.startsWith('velozity_refresh='));
   return { token: res.body.accessToken, user: res.body.user, cookie: raw?.split(';')[0], raw };
 };

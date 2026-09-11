@@ -8,19 +8,23 @@ import {
 } from '../../hooks/queries';
 import { relativeTime } from '../../lib/format';
 import { Button } from '../ui/Button';
-import { IconAlert, IconBell, IconCheck, IconClock } from '../ui/Icon';
+import { IconAlert, IconBell, IconCheck, IconClock, IconUsers } from '../ui/Icon';
 import type { NotificationType } from '../../types';
 
 const TYPE_ICON: Record<NotificationType, (props: { className?: string }) => React.ReactElement> = {
   TASK_ASSIGNED: IconCheck,
   TASK_IN_REVIEW: IconClock,
   TASK_OVERDUE: IconAlert,
+  ACCESS_REQUESTED: IconUsers,
+  ACCESS_APPROVED: IconCheck,
 };
 
 const TYPE_TONE: Record<NotificationType, string> = {
   TASK_ASSIGNED: 'bg-accent-soft text-accent',
   TASK_IN_REVIEW: 'bg-warn-soft text-warn',
   TASK_OVERDUE: 'bg-danger-soft text-danger',
+  ACCESS_REQUESTED: 'bg-info-soft text-info',
+  ACCESS_APPROVED: 'bg-success-soft text-success',
 };
 
 export const NotificationBell = () => {
