@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthProvider';
-import { useClients, useCreateProject, useUpdateProject, useUsers } from '../hooks/queries';
+import {
+  useClients,
+  useCreateProject,
+  useDeleteProject,
+  useUpdateProject,
+  useUsers,
+} from '../hooks/queries';
 import { PROJECT_STATUS_LABELS } from '../lib/format';
 import { Button } from './ui/Button';
 import { Field, Input, Select, Textarea } from './ui/Field';
@@ -14,14 +20,16 @@ type Props = {
   open: boolean;
   onClose: () => void;
   project?: Project;
+  onDeleted?: () => void;
 };
 
-export const ProjectDialog = ({ open, onClose, project }: Props) => {
+export const ProjectDialog = ({ open, onClose, project, onDeleted }: Props) => {
   const { hasRole } = useAuth();
   const clients = useClients();
   const managers = useUsers('PROJECT_MANAGER');
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
 
   const [form, setForm] = useState({
     name: '',
@@ -92,7 +100,7 @@ export const ProjectDialog = ({ open, onClose, project }: Props) => {
       }
     >
       <form id="project-form" onSubmit={submit} className="space-y-3">
-        <FormError error={mutation.error} />
+        <FormError error={mutation.error ?? deleteProject.error} />
 
         <Field label="Name" htmlFor="project-name">
           <Input
@@ -171,6 +179,36 @@ export const ProjectDialog = ({ open, onClose, project }: Props) => {
               ))}
             </Select>
           </Field>
+        ) : null}
+
+        {project ? (
+          <div className="mt-5 rounded-lg bg-danger-soft px-3 py-3">
+            <p className="text-[13px] font-semibold text-danger">Delete this project</p>
+            <p className="mt-1 text-[13px] text-muted">
+              Its tasks go with it and the history cannot be recovered. Put the project on hold
+              instead if the work is only paused.
+            </p>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              className="mt-2.5"
+              disabled={deleteProject.isPending}
+              onClick={() => {
+                if (!window.confirm(`Delete ${project.name} and all ${project.taskTotal} of its tasks?`)) {
+                  return;
+                }
+                deleteProject.mutate(project.id, {
+                  onSuccess: () => {
+                    onClose();
+                    onDeleted?.();
+                  },
+                });
+              }}
+            >
+              {deleteProject.isPending ? 'Deleting' : 'Delete project'}
+            </Button>
+          </div>
         ) : null}
       </form>
     </Modal>

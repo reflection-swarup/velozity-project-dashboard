@@ -199,6 +199,39 @@ const run = async () => {
   });
   check('developer cannot change a project status', devStatus.status === 403, devStatus.status);
 
+  const throwaway = await req('/api/projects', {
+    token: ravi.token,
+    method: 'POST',
+    body: {
+      name: `Smoke suite throwaway ${Date.now()}`,
+      description: 'created to check the delete boundary',
+      clientId: (await req('/api/clients', { token: admin.token })).body.items[0].id,
+    },
+  });
+  const throwawayId = throwaway.body.project.id;
+
+  const devDelete = await req(`/api/projects/${throwawayId}`, {
+    token: karan.token,
+    method: 'DELETE',
+  });
+  check('a developer cannot delete a project', devDelete.status === 403, devDelete.status);
+
+  const crossDelete = await req(`/api/projects/${throwawayId}`, {
+    token: neha.token,
+    method: 'DELETE',
+  });
+  check('a manager cannot delete another manager project', crossDelete.status === 403, crossDelete.status);
+
+  const ownDelete = await req(`/api/projects/${throwawayId}`, {
+    token: ravi.token,
+    method: 'DELETE',
+  });
+  check('the owning manager can delete their own project', ownDelete.status === 204, ownDelete.status);
+  check(
+    'the deleted project is gone',
+    (await req(`/api/projects/${throwawayId}`, { token: admin.token })).status === 404,
+  );
+
   const devUsers = await req('/api/users', { token: karan.token });
   check('developer cannot list users', devUsers.status === 403, devUsers.body);
 

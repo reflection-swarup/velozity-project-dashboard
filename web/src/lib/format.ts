@@ -30,20 +30,6 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   COMPLETED: 'Completed',
 };
 
-export const STATUS_STYLES: Record<TaskStatus, string> = {
-  TODO: 'bg-slate-100 text-slate-700 ring-slate-200',
-  IN_PROGRESS: 'bg-sky-50 text-sky-700 ring-sky-200',
-  IN_REVIEW: 'bg-amber-50 text-amber-700 ring-amber-200',
-  DONE: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-};
-
-export const PRIORITY_STYLES: Record<TaskPriority, string> = {
-  LOW: 'bg-slate-100 text-slate-600 ring-slate-200',
-  MEDIUM: 'bg-blue-50 text-blue-700 ring-blue-200',
-  HIGH: 'bg-orange-50 text-orange-700 ring-orange-200',
-  CRITICAL: 'bg-rose-50 text-rose-700 ring-rose-200',
-};
-
 const UNITS: [limit: number, seconds: number, label: string][] = [
   [60, 1, 'sec'],
   [3600, 60, 'min'],

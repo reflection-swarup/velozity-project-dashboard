@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { TaskBoard } from '../components/TaskList';
@@ -195,6 +195,7 @@ export const ProjectDetailPage = () => {
   const project = useProject(id);
   const tasks = useTasks(`projectId=${id}&limit=100&sort=priority&order=desc`);
   const updateProject = useUpdateProject();
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -325,7 +326,12 @@ export const ProjectDetailPage = () => {
       </div>
 
       <TaskDialog open={dialogOpen} onClose={() => setDialogOpen(false)} defaultProjectId={id} />
-      <ProjectDialog open={editOpen} onClose={() => setEditOpen(false)} project={data} />
+      <ProjectDialog
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        project={data}
+        onDeleted={() => navigate('/projects')}
+      />
     </div>
   );
 };
