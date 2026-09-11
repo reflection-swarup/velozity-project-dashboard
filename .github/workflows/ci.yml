@@ -34,6 +34,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Colour contrast
+        run: python scripts/check-contrast.py
+
       - name: Production build
         run: npx vite build
         env:
