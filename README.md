@@ -11,7 +11,7 @@ Socket.io · node-cron · Zod · Tailwind CSS · Docker
 |---|---|
 | Repository | https://github.com/reflection-swarup/velozity-project-dashboard |
 | CI | ![CI](https://github.com/reflection-swarup/velozity-project-dashboard/actions/workflows/ci.yml/badge.svg) |
-| Live application | _see the Deployment section_ |
+| Live application | _not deployed yet — see [Deployment](#deployment)_ |
 | Demo password | `Password123!` for every seeded account |
 
 ---
@@ -19,6 +19,7 @@ Socket.io · node-cron · Zod · Tailwind CSS · Docker
 ## Contents
 
 - [Quick start](#quick-start)
+- [Features](#features)
 - [Demo accounts](#demo-accounts)
 - [Tests](#tests)
 - [Architecture](#architecture)
@@ -32,6 +33,7 @@ Socket.io · node-cron · Zod · Tailwind CSS · Docker
 - [Project layout](#project-layout)
 - [Deployment](#deployment)
 - [Known limitations](#known-limitations)
+- [Explanation](#explanation)
 
 ---
 
@@ -88,6 +90,25 @@ cp .env.example .env          # VITE_API_URL=http://localhost:4000
 npm install
 npm run dev                   # http://localhost:5173
 ```
+
+---
+
+## Features
+
+- **Three roles with genuinely different applications** — admin, project manager and developer,
+  enforced server-side rather than hidden in the interface.
+- **Projects and tasks** — clients, projects, and tasks with title, description, assignee, status
+  (To Do / In Progress / In Review / Done), priority (Low / Medium / High / Critical), due date
+  and a full activity history.
+- **Live activity feed** — role-filtered over WebSockets, with the last 20 missed events replayed
+  from the database when you come back.
+- **Presence** — a live count of who is online right now, from socket presence.
+- **Notifications** — stored in Postgres, delivered over the socket, with a count badge, a
+  dropdown, and mark-one or mark-all-read. No polling anywhere in the client.
+- **Overdue detection** — a scheduled sweep flags past-due work, posts it to the feed and
+  notifies the assignee.
+- **Shareable filters** — status, priority, due-date range and overdue-only all live in the URL.
+- **Light and dark themes**, a landing page, and a responsive sidebar layout.
 
 ---
 
@@ -852,3 +873,31 @@ origin, and both must be set or the session silently fails to restore on reload.
   denormalised title, but the task row itself is gone.
 - **The seeded logo is a single-tone PNG.** Dark mode inverts its lightness and rotates the hue
   back to keep the brand red; an SVG would render more sharply at high DPI.
+
+---
+
+## Explanation
+
+*The hardest problem, how the real-time role-filtered feed works, and one thing I would do
+differently.*
+
+The hardest problem was role-filtering the live feed without ever trusting the client.
+Broadcasting each project's events to everyone watching it leaks one developer's work to another,
+and a filter applied after the fact is one someone can forget. So room membership became the
+authorisation itself. Admins join a global room on connect; a project room is joined only through
+an explicit subscribe that the server authorises against the database and acknowledges.
+Developers are refused project rooms entirely and receive events on a personal channel, so no
+path exists by which another developer's task reaches them. A status change fans out as one
+chained emit across the global, project, manager and assignee rooms, which Socket.io
+de-duplicates.
+
+Two decisions followed. The activity log stores the finished sentence and the assignee at event
+time, so REST catch-up and socket events render identically, and reassigning a task never hands
+its history to someone new. The REST feed uses the mirror-image scope, so a reload shows exactly
+what the socket would have pushed.
+
+I would compose every role scope with `AND` from the start. I originally spread the scope and the
+caller's filters into one object, which let `?assigneeId=<another developer>` overwrite the scope
+rather than narrow it — a real vulnerability my tests missed because they never passed that
+parameter. Scopes now combine so filters can only narrow, and regression tests attack it
+directly.
