@@ -72,17 +72,6 @@ const NewUserDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
           />
         </Field>
 
-        <Field label="Temporary password" htmlFor="user-password">
-          <Input
-            id="user-password"
-            type="password"
-            required
-            minLength={8}
-            value={form.password}
-            onChange={(event) => setForm({ ...form, password: event.target.value })}
-          />
-        </Field>
-
         <Field label="Role" htmlFor="user-role">
           <Select
             id="user-role"
@@ -93,6 +82,17 @@ const NewUserDialog = ({ open, onClose }: { open: boolean; onClose: () => void }
             <option value="PROJECT_MANAGER">Project Manager</option>
             <option value="ADMIN">Admin</option>
           </Select>
+        </Field>
+
+        <Field label="Temporary password" htmlFor="user-password">
+          <Input
+            id="user-password"
+            type="password"
+            required
+            minLength={8}
+            value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
+          />
         </Field>
       </form>
     </Modal>

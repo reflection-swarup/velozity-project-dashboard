@@ -111,8 +111,9 @@ export const LoginPage = () => {
           </ul>
         </div>
 
-        <p className="mt-5 text-center text-[13px] text-subtle">
-          Accounts are created by an administrator
+        <p className="mt-5 text-center text-md text-muted">
+          Don&rsquo;t have an account?{' '}
+          <span className="font-semibold text-ink">Contact your administrator.</span>
         </p>
 
         <Link
