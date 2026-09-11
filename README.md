@@ -161,7 +161,7 @@ hers.
 ```bash
 cd server
 npm run typecheck        # tsc --noEmit, strict
-npm run smoke            # 90 checks against a running API + WebSocket
+npm run smoke            # 117 checks against a running API + WebSocket
 npm run attack           # 24 adversarial checks, the pre-deployment checklist
 npm run verify:overdue   # 7 checks on the scheduled job itself
 
@@ -921,8 +921,10 @@ serving a session that cannot survive a refresh:
 │   │   ├── migrations/         checked in, applied with migrate deploy
 │   │   └── seed.ts             demo dataset
 │   ├── scripts/
-│   │   ├── smoke.mjs           74 checks against a live API + WebSocket
-│   │   └── verify-overdue.ts   5 checks on the scheduler
+│   │   ├── smoke.mjs           role, realtime and validation checks
+│   │   ├── attack.mjs          adversarial pre-deployment checklist
+│   │   ├── demo.mjs            manual triggers for walking through the app
+│   │   └── verify-overdue.ts   checks on the scheduler itself
 │   └── src/
 │       ├── config/env.ts       Zod-validated environment
 │       ├── middleware/         auth (requireAuth, requireRole), validate, error
@@ -1036,12 +1038,21 @@ COOKIE_SECURE=false             → refuses: browsers drop SameSite=None without
 http:// in CORS_ORIGIN          → refuses: every production origin must be https
 ```
 
-### What free tiers mean for the demo
+### Instance type, and why it matters here
 
-- **Render sleeps after 15 minutes of inactivity.** The first request then takes roughly 40
-  seconds to wake the instance, and **the overdue sweep does not run while it is asleep**. To
-  demonstrate the scheduler, wake the app and leave it open for a few minutes. Pinging
-  `/health` every 10 minutes from an uptime checker keeps it warm.
+**The overdue sweep runs inside the API process**, so the API sleeping means the scheduler stops.
+On Render's free instance that happens after 15 minutes of inactivity, and the first request
+afterwards takes roughly 40 seconds to wake it. A visitor arriving cold would wait, and would not
+see the sweep fire at all.
+
+A continuously running (paid) instance is therefore the right choice for a demo that is meant to
+be looked at unannounced. On the free tier the app still works, but plan around it: wake it and
+leave it open for a few minutes before demonstrating the scheduler, or keep it warm by pinging
+`/health` every 10 minutes from an uptime checker.
+
+This is the deployment-shaped version of a limitation already listed below: the scheduler is
+in-process, which is the right call for a single instance and the wrong one the moment there is
+more than one.
 - **Neon suspends an idle database** but wakes in about a second, so it is not noticeable.
 - **Vercel preview deployments get their own URLs**, which `CORS_ORIGIN` does not include, so
   sign-in only works on the production domain unless you add the preview origin too
