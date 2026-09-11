@@ -9,10 +9,15 @@ import type { Activity, Notification, Task } from '../types';
 
 type Presence = { onlineCount: number; onlineUserIds: string[] };
 
+export type SubscriptionState = 'pending' | 'joined' | 'refused';
+
 type SocketState = {
   connected: boolean;
   presence: Presence;
-  subscribeToProject: (projectId: string) => () => void;
+  subscribeToProject: (
+    projectId: string,
+    onResult?: (state: SubscriptionState) => void,
+  ) => () => void;
 };
 
 const SocketContext = createContext<SocketState | null>(null);
@@ -96,21 +101,38 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [token, status, queryClient, prependActivity]);
 
-  // Project rooms are authorised server side; the ack tells us whether we are
-  // actually in the room so the UI can stay honest about it.
-  const subscribeToProject = useCallback((projectId: string) => {
-    const socket = socketRef.current;
-    if (!socket) return () => undefined;
+  // Project rooms are authorised server side. The acknowledgement tells us
+  // whether we actually joined, which matters because a developer is refused
+  // the room on purpose and is served from their personal channel instead.
+  const subscribeToProject = useCallback(
+    (projectId: string, onResult?: (state: SubscriptionState) => void) => {
+      const socket = socketRef.current;
+      if (!socket) {
+        onResult?.('pending');
+        return () => undefined;
+      }
 
-    const join = () => socket.emit('project:subscribe', projectId);
-    if (socket.connected) join();
-    socket.on('connect', join);
+      let cancelled = false;
 
-    return () => {
-      socket.off('connect', join);
-      if (socket.connected) socket.emit('project:unsubscribe', projectId);
-    };
-  }, []);
+      const join = () => {
+        onResult?.('pending');
+        socket.emit('project:subscribe', projectId, (allowed: boolean) => {
+          if (cancelled) return;
+          onResult?.(allowed ? 'joined' : 'refused');
+        });
+      };
+
+      if (socket.connected) join();
+      socket.on('connect', join);
+
+      return () => {
+        cancelled = true;
+        socket.off('connect', join);
+        if (socket.connected) socket.emit('project:unsubscribe', projectId);
+      };
+    },
+    [],
+  );
 
   const value = useMemo<SocketState>(
     () => ({ connected, presence, subscribeToProject }),

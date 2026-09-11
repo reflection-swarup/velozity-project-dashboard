@@ -6,7 +6,8 @@ import { Button } from './ui/Button';
 import { Card, CardHeader } from './ui/Card';
 import { Avatar } from './ui/Avatar';
 import { EmptyState, ErrorState, ListSkeleton, Spinner } from './ui/Feedback';
-import { useSocket } from '../realtime/SocketProvider';
+import { useSocket, type SubscriptionState } from '../realtime/SocketProvider';
+import { useAuth } from '../auth/AuthProvider';
 import type { Activity, ActivityType } from '../types';
 
 const TYPE_TONE: Record<ActivityType, string> = {
@@ -113,6 +114,28 @@ const MissedBanner = () => {
   );
 };
 
+const LiveIndicator = ({
+  connected,
+  scoped,
+}: {
+  connected: boolean;
+  scoped: boolean;
+}) => (
+  <span
+    className="inline-flex items-center gap-1.5 rounded-md bg-raised px-2 py-1 text-xs font-medium text-muted"
+    title={
+      connected
+        ? scoped
+          ? 'Live, limited to activity on tasks assigned to you'
+          : 'Receiving live updates for this project'
+        : 'Reconnecting to live updates'
+    }
+  >
+    <span className={clsx('size-1.5 rounded-full', connected ? 'bg-success' : 'bg-warn')} />
+    {connected ? (scoped ? 'Live · your tasks' : 'Live') : 'Reconnecting'}
+  </span>
+);
+
 type Props = {
   projectId?: string;
   title?: string;
@@ -130,16 +153,24 @@ export const ActivityFeed = ({
 }: Props) => {
   const feed = useActivityFeed(projectId);
   const { connected, subscribeToProject } = useSocket();
+  const { user } = useAuth();
   const [firstSeenId, setFirstSeenId] = useState<string | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionState>('pending');
 
   // Joining the project room is what makes this live for everyone currently
-  // looking at the same project.
+  // looking at the same project. The server acknowledges whether we are in, and
+  // a refusal is reported rather than assumed to be a failure.
   useEffect(() => {
     if (!projectId) return;
-    return subscribeToProject(projectId);
+    return subscribeToProject(projectId, setSubscription);
   }, [projectId, subscribeToProject]);
 
   const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
+
+  // A refused project room is the expected outcome for a developer, so the
+  // label narrows instead of claiming the feed is broken.
+  const scopedToOwnTasks =
+    Boolean(projectId) && subscription === 'refused' && user?.role === 'DEVELOPER';
 
   useEffect(() => {
     if (firstSeenId === null && items.length > 0) setFirstSeenId(items[0]!.id);
@@ -152,15 +183,7 @@ export const ActivityFeed = ({
       <CardHeader
         title={title}
         subtitle={subtitle}
-        action={
-          <span
-            className="inline-flex items-center gap-1.5 rounded-md bg-raised px-2 py-1 text-xs text-muted"
-            title={connected ? 'Receiving live updates' : 'Reconnecting'}
-          >
-            <span className={clsx('size-1.5 rounded-full', connected ? 'bg-success' : 'bg-warn')} />
-            {connected ? 'Live' : 'Reconnecting'}
-          </span>
-        }
+        action={<LiveIndicator connected={connected} scoped={scopedToOwnTasks} />}
       />
 
       {showMissed ? <MissedBanner /> : null}
