@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web build and tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npx vite build
+        env:
+          VITE_API_URL: http://localhost:4000
+
+  api:
+    name: API checks and smoke suite
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: velozity
+          POSTGRES_PASSWORD: velozity
+          POSTGRES_DB: velozity
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U velozity -d velozity"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://velozity:velozity@localhost:5432/velozity?schema=public
+      JWT_ACCESS_SECRET: ci_access_secret_not_used_anywhere_else
+      JWT_REFRESH_SECRET: ci_refresh_secret_not_used_anywhere_else
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL_DAYS: 7
+      CORS_ORIGIN: http://localhost:5173
+      COOKIE_SECURE: 'false'
+      COOKIE_SAMESITE: lax
+      OVERDUE_CRON: '*/5 * * * *'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Compile
+        run: npm run build
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed demo data
+        run: npm run seed
+
+      - name: Verify the overdue scheduler
+        run: npm run verify:overdue
+
+      - name: Start the API
+        run: |
+          node dist/src/index.js > api.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:4000/health > /dev/null; then
+              echo "api is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "api did not become healthy in time"
+          cat api.log
+          exit 1
+
+      - name: Smoke suite
+        run: npm run smoke
+
+      - name: API log on failure
+        if: failure()
+        run: cat api.log || true
+
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./server
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build the web image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          push: false
+          build-args: VITE_API_URL=http://localhost:4000
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

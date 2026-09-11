@@ -10,6 +10,7 @@ Socket.io · node-cron · Zod · Tailwind CSS · Docker
 | | |
 |---|---|
 | Repository | https://github.com/reflection-swarup/velozity-project-dashboard |
+| CI | ![CI](https://github.com/reflection-swarup/velozity-project-dashboard/actions/workflows/ci.yml/badge.svg) |
 | Live application | _see the Deployment section_ |
 | Demo password | `Password123!` for every seeded account |
 
@@ -131,6 +132,11 @@ npm run build            # production build
 
 `npm run smoke` needs the API running (`docker compose up -d` or `npm run dev`) and the seed
 applied. It is idempotent — it restores every record it touches, so it can be run repeatedly.
+
+All of it runs on every push through GitHub Actions (`.github/workflows/ci.yml`) in three jobs:
+**web** (typecheck, unit tests, production build), **api** (typecheck, compile, migrate and seed
+against a Postgres service container, verify the scheduler, boot the compiled server and run the
+full smoke suite against it), and **docker** (both images build).
 
 ### What the smoke suite proves, mapped to the rubric
 
