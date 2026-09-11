@@ -54,8 +54,8 @@ const ActivityRow = ({
     </span>
 
     <div className="min-w-0 flex-1">
-      <p className="text-sm leading-snug text-ink">{activity.message}</p>
-      <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-subtle">
+      <p className="text-md leading-snug font-medium text-ink">{activity.message}</p>
+      <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px] text-subtle">
         <span>{relativeTime(activity.createdAt)}</span>
         {showProject && activity.projectName ? (
           <>
@@ -80,7 +80,7 @@ const MissedBanner = () => {
     <div className="animate-fade border-b border-line bg-warn-soft px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-ink">
+          <p className="text-md font-semibold text-ink">
             {items.length} update{items.length === 1 ? '' : 's'} while you were away
           </p>
           <p className="mt-0.5 text-xs text-muted">

@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Field';
 import { FormError, Spinner } from '../components/ui/Feedback';
 import { IconArrowRight } from '../components/ui/Icon';
+import { Logo } from '../components/ui/Logo';
 
 const DEMO_ACCOUNTS = [
   { email: 'admin@velozity.test', role: 'Admin', scope: 'Everything' },
@@ -41,13 +42,15 @@ export const LoginPage = () => {
   return (
     <div className="flex min-h-full items-center justify-center px-4 py-12">
       <div className="animate-rise w-full max-w-sm">
-        <Link to="/" className="mb-7 flex flex-col items-center gap-2.5 text-center">
-          <span className="flex size-11 items-center justify-center rounded-xl bg-accent text-lg font-bold text-accent-ink">
-            V
-          </span>
+        <Link to="/" className="mb-8 flex flex-col items-center gap-3 text-center">
+          <Logo className="h-11" />
           <span>
-            <span className="block text-lg font-semibold text-ink">Velozity Dashboard</span>
-            <span className="block text-sm text-muted">Sign in to your agency workspace</span>
+            <span className="block text-xl font-bold tracking-tight text-ink">
+              Velozity Dashboard
+            </span>
+            <span className="mt-1 block text-md text-muted">
+              Sign in to your agency workspace
+            </span>
           </span>
         </Link>
 
@@ -83,7 +86,7 @@ export const LoginPage = () => {
         </form>
 
         <div className="mt-4 overflow-hidden rounded-xl bg-surface ring-1 ring-line">
-          <p className="border-b border-line px-4 py-2.5 text-xs font-medium text-muted">
+          <p className="border-b border-line px-4 py-3 text-[13px] font-semibold text-muted">
             Seeded accounts · password Password123!
           </p>
           <ul className="divide-y divide-line">
@@ -98,10 +101,10 @@ export const LoginPage = () => {
                   }}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs text-ink">{account.email}</span>
-                    <span className="block text-[11px] text-subtle">{account.scope}</span>
+                    <span className="block truncate text-md font-medium text-ink">{account.email}</span>
+                    <span className="block text-[13px] text-subtle">{account.scope}</span>
                   </span>
-                  <span className="text-xs text-muted">{account.role}</span>
+                  <span className="text-[13px] font-semibold text-muted">{account.role}</span>
                 </button>
               </li>
             ))}
@@ -110,7 +113,7 @@ export const LoginPage = () => {
 
         <Link
           to="/"
-          className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted transition-colors hover:text-ink"
+          className="mt-5 flex items-center justify-center gap-1.5 text-md font-medium text-muted transition-colors hover:text-ink"
         >
           Read what this project does
           <IconArrowRight className="size-3.5" />

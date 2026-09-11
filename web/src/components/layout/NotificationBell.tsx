@@ -51,7 +51,7 @@ export const NotificationBell = () => {
         className="relative rounded-lg p-2 text-muted transition-colors duration-150 hover:bg-raised hover:text-ink"
         aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ''}`}
       >
-        <IconBell className="size-4.5" />
+        <IconBell className="size-5" />
         {unread > 0 ? (
           <span className="absolute top-0.5 right-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white tabular-nums">
             {unread > 99 ? '99+' : unread}
@@ -62,7 +62,7 @@ export const NotificationBell = () => {
       {open ? (
         <div className="animate-fade absolute right-0 z-40 mt-2 w-[22rem] overflow-hidden rounded-xl bg-surface shadow-xl ring-1 ring-line">
           <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
-            <p className="text-sm font-semibold text-ink">
+            <p className="text-md font-semibold text-ink">
               Notifications
               {unread > 0 ? <span className="ml-1.5 text-xs font-normal text-muted">{unread} unread</span> : null}
             </p>
@@ -107,10 +107,10 @@ export const NotificationBell = () => {
                       <Icon className="size-3.5" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-semibold text-ink">
+                      <span className="block text-[13px] font-semibold text-ink">
                         {notification.title}
                       </span>
-                      <span className="mt-0.5 block text-xs text-muted">{notification.body}</span>
+                      <span className="mt-0.5 block text-[13px] text-muted">{notification.body}</span>
                       <span className="mt-1 block text-[11px] text-subtle">
                         {relativeTime(notification.createdAt)}
                       </span>

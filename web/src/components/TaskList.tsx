@@ -39,13 +39,13 @@ export const TaskRow = ({ task, showProject = true }: { task: Task; showProject?
     <li className="group relative flex flex-wrap items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-raised">
       <Link to={`/tasks/${task.id}`} className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-subtle tabular-nums">#{task.number}</span>
-          <span className="truncate text-sm font-medium text-ink group-hover:text-accent">
+          <span className="text-[13px] font-semibold text-subtle tabular-nums">#{task.number}</span>
+          <span className="truncate text-md font-semibold text-ink group-hover:text-accent">
             {task.title}
           </span>
           {task.isOverdue ? <OverdueBadge /> : null}
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
           {showProject ? (
             <>
               <span className="truncate">{task.project.name}</span>
@@ -98,8 +98,8 @@ export const TaskBoard = ({ tasks }: { tasks: Task[] }) => (
         <section key={status} className="rounded-xl bg-raised p-2">
           <header className="flex items-center gap-2 px-2 py-1.5">
             <span className={clsx('size-1.5 rounded-full', COLUMN_ACCENT[status])} />
-            <span className="text-xs font-semibold text-ink">{STATUS_LABELS[status]}</span>
-            <span className="ml-auto text-xs text-muted tabular-nums">{column.length}</span>
+            <span className="text-md font-bold text-ink">{STATUS_LABELS[status]}</span>
+            <span className="ml-auto text-[13px] font-semibold text-muted tabular-nums">{column.length}</span>
           </header>
 
           <div className="space-y-2">
@@ -110,11 +110,11 @@ export const TaskBoard = ({ tasks }: { tasks: Task[] }) => (
                 className="block rounded-lg bg-surface p-3 ring-1 ring-line transition-shadow duration-150 hover:ring-accent"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-xs font-medium text-subtle tabular-nums">#{task.number}</span>
+                  <span className="text-[13px] font-semibold text-subtle tabular-nums">#{task.number}</span>
                   <PriorityBadge priority={task.priority} />
                 </div>
 
-                <p className="mt-1.5 text-sm leading-snug font-medium text-ink">{task.title}</p>
+                <p className="mt-1.5 text-md leading-snug font-semibold text-ink">{task.title}</p>
 
                 <p
                   className={clsx(

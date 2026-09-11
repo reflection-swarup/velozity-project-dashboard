@@ -21,8 +21,8 @@ export const CardHeader = ({
 }) => (
   <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
     <div className="min-w-0">
-      <h2 className="text-sm font-semibold text-ink">{title}</h2>
-      {subtitle ? <p className="mt-0.5 text-xs text-muted">{subtitle}</p> : null}
+      <h2 className="text-md font-semibold text-ink">{title}</h2>
+      {subtitle ? <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p> : null}
     </div>
     {action}
   </div>
@@ -50,10 +50,10 @@ export const StatCard = ({
 }) => (
   <Card className="px-4 py-3.5 transition-colors duration-150 hover:ring-line-strong">
     <div className="flex items-start justify-between gap-2">
-      <p className="text-[11px] font-semibold tracking-wide text-subtle uppercase">{label}</p>
+      <p className="text-xs font-bold tracking-wider text-muted uppercase">{label}</p>
       {icon ? <span className="text-subtle">{icon}</span> : null}
     </div>
-    <p className={clsx('mt-1.5 text-2xl font-semibold tabular-nums', toneText[tone])}>{value}</p>
-    {hint ? <p className="mt-0.5 text-xs text-muted">{hint}</p> : null}
+    <p className={clsx('mt-2 text-3xl font-bold tabular-nums', toneText[tone])}>{value}</p>
+    {hint ? <p className="mt-1 text-[13px] text-muted">{hint}</p> : null}
   </Card>
 );

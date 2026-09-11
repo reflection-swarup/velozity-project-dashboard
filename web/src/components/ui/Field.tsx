@@ -1,16 +1,16 @@
 import clsx from 'clsx';
 
 const control =
-  'w-full rounded-lg border-0 bg-surface px-3 text-sm text-ink ring-1 ring-line transition-shadow duration-150 placeholder:text-subtle focus:ring-2 focus:ring-accent disabled:opacity-60';
+  'w-full rounded-lg border-0 bg-surface px-3 text-md text-ink ring-1 ring-line transition-shadow duration-150 placeholder:text-subtle focus:ring-2 focus:ring-accent disabled:opacity-60';
 
 export const Label = ({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) => (
-  <label htmlFor={htmlFor} className="mb-1 block text-xs font-medium text-muted">
+  <label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-semibold text-ink">
     {children}
   </label>
 );
 
 export const Input = ({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input className={clsx(control, 'h-9', className)} {...props} />
+  <input className={clsx(control, 'h-10', className)} {...props} />
 );
 
 export const Textarea = ({
@@ -25,7 +25,7 @@ export const Select = ({
   children,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select className={clsx(control, 'h-9 pr-8', className)} {...props}>
+  <select className={clsx(control, 'h-10 pr-8', className)} {...props}>
     {children}
   </select>
 );

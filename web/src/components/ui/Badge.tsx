@@ -7,7 +7,7 @@ import {
 import type { ProjectStatus, TaskPriority, TaskStatus } from '../../types';
 
 const base =
-  'inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap';
+  'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold whitespace-nowrap';
 
 export const Badge = ({
   className,
@@ -68,7 +68,7 @@ export const CountBadge = ({ count, tone = 'accent' }: { count: number; tone?: '
   return (
     <span
       className={clsx(
-        'inline-flex min-w-5 items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
+        'inline-flex min-w-5.5 items-center justify-center rounded-md px-1.5 py-0.5 text-xs font-bold tabular-nums',
         tone === 'danger' ? 'bg-danger text-white' : 'bg-accent text-accent-ink',
       )}
     >

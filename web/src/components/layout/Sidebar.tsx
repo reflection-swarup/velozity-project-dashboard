@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { useNotifications, useProjects, useTasks } from '../../hooks/queries';
 import { ROLE_LABELS } from '../../lib/format';
 import { CountBadge } from '../ui/Badge';
+import { Logo } from '../ui/Logo';
 import {
   IconActivity,
   IconBriefcase,
@@ -26,14 +27,14 @@ type Item = {
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   clsx(
-    'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors duration-150',
+    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-md transition-colors duration-150',
     isActive
-      ? 'bg-accent-soft font-medium text-accent'
-      : 'text-muted hover:bg-raised hover:text-ink',
+      ? 'bg-accent-soft font-semibold text-accent'
+      : 'font-medium text-ink hover:bg-raised',
   );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="mt-5 mb-1.5 px-2.5 text-[11px] font-semibold tracking-wider text-subtle uppercase">
+  <p className="mt-6 mb-2 px-3 text-xs font-bold tracking-widest text-muted uppercase">
     {children}
   </p>
 );
@@ -65,8 +66,18 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   ];
 
   const menu: Item[] = [
-    { to: '/dashboard', label: 'Overview', icon: IconHome, roles: ['ADMIN', 'PROJECT_MANAGER', 'DEVELOPER'] },
-    { to: '/projects', label: 'Projects', icon: IconFolder, roles: ['ADMIN', 'PROJECT_MANAGER', 'DEVELOPER'] },
+    {
+      to: '/dashboard',
+      label: 'Overview',
+      icon: IconHome,
+      roles: ['ADMIN', 'PROJECT_MANAGER', 'DEVELOPER'],
+    },
+    {
+      to: '/projects',
+      label: 'Projects',
+      icon: IconFolder,
+      roles: ['ADMIN', 'PROJECT_MANAGER', 'DEVELOPER'],
+    },
     { to: '/clients', label: 'Clients', icon: IconBriefcase, roles: ['ADMIN'] },
     { to: '/users', label: 'Team', icon: IconUsers, roles: ['ADMIN'] },
   ];
@@ -75,13 +86,12 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
 
   return (
     <div className="flex h-full flex-col bg-surface">
-      <div className="flex items-center gap-2.5 border-b border-line px-4 py-3.5">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-ink">
-          V
-        </span>
+      <div className="flex items-center gap-3 border-b border-line px-4 py-4">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-ink">Velozity</p>
-          <p className="truncate text-xs text-muted">{ROLE_LABELS[user.role]} workspace</p>
+          <Logo className="h-9" />
+          <p className="mt-2 text-sm font-semibold text-muted">
+            {ROLE_LABELS[user.role]} workspace
+          </p>
         </div>
         {onNavigate ? (
           <button
@@ -90,18 +100,18 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
             className="rounded-md p-1.5 text-muted hover:bg-raised lg:hidden"
             aria-label="Close navigation"
           >
-            <IconClose />
+            <IconClose className="size-5" />
           </button>
         ) : null}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 pb-4">
-        <div className="mt-3 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto px-2.5 pb-6">
+        <div className="mt-4 space-y-1">
           {primary
             .filter((item) => item.roles.includes(user.role))
             .map((item) => (
               <NavLink key={item.to} to={item.to} className={linkClass} onClick={onNavigate}>
-                <item.icon className="size-4 shrink-0" />
+                <item.icon className="size-5 shrink-0" />
                 <span className="flex-1">{item.label}</span>
                 <CountBadge count={item.badge ?? 0} tone={item.badgeTone} />
               </NavLink>
@@ -109,12 +119,12 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
         </div>
 
         <SectionLabel>Menu</SectionLabel>
-        <div className="space-y-0.5">
+        <div className="space-y-1">
           {menu
             .filter((item) => item.roles.includes(user.role))
             .map((item) => (
               <NavLink key={item.to} to={item.to} className={linkClass} onClick={onNavigate}>
-                <item.icon className="size-4 shrink-0" />
+                <item.icon className="size-5 shrink-0" />
                 <span className="flex-1">{item.label}</span>
               </NavLink>
             ))}
@@ -123,7 +133,7 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
         {recent.length > 0 ? (
           <>
             <SectionLabel>Recent projects</SectionLabel>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {recent.map((project) => (
                 <NavLink
                   key={project.id}
@@ -133,7 +143,7 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
                 >
                   <span
                     className={clsx(
-                      'size-2 shrink-0 rounded-full',
+                      'ml-1 size-2.5 shrink-0 rounded-full',
                       project.overdueCount > 0
                         ? 'bg-danger'
                         : project.status === 'ACTIVE'

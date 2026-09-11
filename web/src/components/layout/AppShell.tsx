@@ -19,10 +19,10 @@ export const PageHeader = ({
 }) => (
   <div className="mb-5">
     {breadcrumbs && breadcrumbs.length > 0 ? (
-      <nav className="mb-1.5 flex items-center gap-1 text-xs text-muted" aria-label="Breadcrumb">
+      <nav className="mb-2 flex items-center gap-1.5 text-[13px] font-medium text-muted" aria-label="Breadcrumb">
         {breadcrumbs.map((crumb, index) => (
           <span key={crumb.label} className="flex items-center gap-1">
-            {index > 0 ? <IconChevronRight className="size-3 text-subtle" /> : null}
+            {index > 0 ? <IconChevronRight className="size-3.5 text-subtle" /> : null}
             {crumb.to ? (
               <Link to={crumb.to} className="transition-colors hover:text-ink">
                 {crumb.label}
@@ -37,8 +37,8 @@ export const PageHeader = ({
 
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-[1.75rem]">{title}</h1>
+        {description ? <p className="mt-1.5 text-md text-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
@@ -57,7 +57,7 @@ export const AppShell = () => {
 
   return (
     <div className="flex min-h-full">
-      <aside className="hidden w-64 shrink-0 border-r border-line lg:block">
+      <aside className="hidden w-[17.5rem] shrink-0 border-r border-line lg:block">
         <div className="sticky top-0 h-screen">
           <Sidebar />
         </div>
@@ -70,7 +70,7 @@ export const AppShell = () => {
             onClick={() => setNavOpen(false)}
             aria-hidden="true"
           />
-          <div className="animate-fade absolute inset-y-0 left-0 w-72 border-r border-line shadow-2xl">
+          <div className="animate-fade absolute inset-y-0 left-0 w-[18rem] border-r border-line shadow-2xl">
             <Sidebar onNavigate={() => setNavOpen(false)} />
           </div>
         </div>

@@ -8,3 +8,5 @@ build/
 coverage/
 .vercel
 *.pdf
+
+/logo-dark.png

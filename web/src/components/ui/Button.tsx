@@ -13,8 +13,8 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: 'h-8 px-2.5 text-xs',
-  md: 'h-9 px-3.5 text-sm',
+  sm: 'h-9 px-3 text-[13px]',
+  md: 'h-10 px-4 text-md',
 };
 
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {

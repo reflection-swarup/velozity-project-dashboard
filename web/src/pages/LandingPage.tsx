@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useTheme } from '../theme/ThemeProvider';
 import { Button } from '../components/ui/Button';
+import { Logo } from '../components/ui/Logo';
 import {
   IconActivity,
   IconAlert,
@@ -98,22 +99,23 @@ export const LandingPage = () => {
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-ink">
-            V
+        <div className="mx-auto flex h-18 max-w-6xl items-center gap-3 px-4 sm:px-6">
+          <Logo className="h-9 sm:h-10" />
+          <span className="hidden h-7 w-px bg-line sm:block" />
+          <span className="hidden text-xl font-bold tracking-tight text-ink sm:block">
+            Velozity Dashboard
           </span>
-          <span className="text-sm font-semibold text-ink">Velozity Dashboard</span>
 
           <nav className="ml-auto flex items-center gap-1 sm:gap-2">
             <a
               href="#roles"
-              className="hidden rounded-lg px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink sm:block"
+              className="hidden rounded-lg px-3 py-2 text-md font-medium text-muted transition-colors hover:text-ink sm:block"
             >
               Roles
             </a>
             <a
               href="#features"
-              className="hidden rounded-lg px-2.5 py-1.5 text-sm text-muted transition-colors hover:text-ink sm:block"
+              className="hidden rounded-lg px-3 py-2 text-md font-medium text-muted transition-colors hover:text-ink sm:block"
             >
               How it works
             </a>
@@ -123,7 +125,7 @@ export const LandingPage = () => {
               className="rounded-lg p-2 text-muted transition-colors hover:bg-raised hover:text-ink"
               aria-label="Toggle theme"
             >
-              {resolved === 'dark' ? <IconSun className="size-4.5" /> : <IconMoon className="size-4.5" />}
+              {resolved === 'dark' ? <IconSun className="size-5" /> : <IconMoon className="size-5" />}
             </button>
             <Link to={status === 'authenticated' ? '/dashboard' : '/login'}>
               <Button size="sm">{status === 'authenticated' ? 'Open dashboard' : 'Sign in'}</Button>
@@ -134,16 +136,16 @@ export const LandingPage = () => {
 
       <section className="mx-auto max-w-6xl px-4 pt-16 pb-12 sm:px-6 sm:pt-24">
         <div className="animate-rise max-w-3xl">
-          <span className="inline-flex items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
+          <span className="inline-flex items-center gap-2 rounded-full bg-accent-soft px-3.5 py-1.5 text-[13px] font-semibold text-accent">
             <span className="size-1.5 rounded-full bg-accent" />
             Real-time · Role-based · Postgres
           </span>
 
-          <h1 className="mt-5 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+          <h1 className="mt-6 text-4xl font-bold tracking-tight text-ink sm:text-[3.25rem] sm:leading-[1.08]">
             The project dashboard a small agency actually runs on.
           </h1>
 
-          <p className="mt-4 max-w-2xl text-base text-muted sm:text-lg">
+          <p className="mt-5 max-w-2xl text-lg text-muted">
             Track client projects, move tasks through review, and watch your team work in real time.
             Three roles, each with strictly different access — enforced on the server, not hidden in
             the interface.
@@ -161,7 +163,7 @@ export const LandingPage = () => {
             </a>
           </div>
 
-          <p className="mt-3 text-xs text-subtle">
+          <p className="mt-4 text-[13px] text-subtle">
             Seeded with 7 users, 4 projects and 21 tasks. Password for every demo account is
             Password123!
           </p>
@@ -175,8 +177,8 @@ export const LandingPage = () => {
             ['20', 'missed events replayed on return'],
           ].map(([value, label]) => (
             <div key={label}>
-              <dt className="text-2xl font-semibold text-ink tabular-nums">{value}</dt>
-              <dd className="mt-0.5 text-xs text-muted">{label}</dd>
+              <dt className="text-3xl font-bold text-ink tabular-nums">{value}</dt>
+              <dd className="mt-1 text-[13px] font-medium text-muted">{label}</dd>
             </div>
           ))}
         </dl>
@@ -184,10 +186,10 @@ export const LandingPage = () => {
 
       <section id="roles" className="border-y border-line bg-surface py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink">
+          <h2 className="text-3xl font-bold tracking-tight text-ink">
             Three roles, three different applications
           </h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
+          <p className="mt-2.5 max-w-2xl text-md text-muted">
             Sign in as any of them to see how far the boundaries go. The same endpoint returns
             different data — and refuses outright when it should.
           </p>
@@ -198,19 +200,19 @@ export const LandingPage = () => {
                 key={role.name}
                 className="flex flex-col rounded-xl bg-canvas p-5 ring-1 ring-line transition-colors duration-150 hover:ring-line-strong"
               >
-                <p className="text-sm font-semibold text-ink">{role.name}</p>
-                <p className="mt-0.5 text-xs text-muted">{role.summary}</p>
+                <p className="text-lg font-bold text-ink">{role.name}</p>
+                <p className="mt-1 text-[13px] font-medium text-muted">{role.summary}</p>
 
                 <ul className="mt-4 flex-1 space-y-2">
                   {role.points.map((point) => (
-                    <li key={point} className="flex gap-2 text-sm text-muted">
+                    <li key={point} className="flex gap-2.5 text-md text-muted">
                       <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />
                       {point}
                     </li>
                   ))}
                 </ul>
 
-                <p className="mt-4 font-mono text-xs text-subtle">{role.email}</p>
+                <p className="mt-5 font-mono text-[13px] text-subtle">{role.email}</p>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -227,8 +229,8 @@ export const LandingPage = () => {
 
       <section id="features" className="py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink">How it works</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
+          <h2 className="text-3xl font-bold tracking-tight text-ink">How it works</h2>
+          <p className="mt-2.5 max-w-2xl text-md text-muted">
             The parts that were interesting to build, and the decisions behind them.
           </p>
 
@@ -238,8 +240,8 @@ export const LandingPage = () => {
                 <span className="inline-flex size-9 items-center justify-center rounded-lg bg-accent-soft text-accent">
                   <feature.icon className="size-4.5" />
                 </span>
-                <p className="mt-3.5 text-sm font-semibold text-ink">{feature.title}</p>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted">{feature.body}</p>
+                <p className="mt-4 text-md font-bold text-ink">{feature.title}</p>
+                <p className="mt-2 text-md leading-relaxed text-muted">{feature.body}</p>
               </div>
             ))}
           </div>
@@ -248,12 +250,12 @@ export const LandingPage = () => {
 
       <section className="border-t border-line bg-surface py-14">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-sm font-semibold tracking-wider text-subtle uppercase">Built with</h2>
+          <h2 className="text-md font-bold tracking-wider text-muted uppercase">Built with</h2>
           <ul className="mt-4 flex flex-wrap gap-2">
             {STACK.map((item) => (
               <li
                 key={item}
-                className="rounded-lg bg-canvas px-3 py-1.5 text-sm text-muted ring-1 ring-line"
+                className="rounded-lg bg-canvas px-3.5 py-2 text-md font-medium text-muted ring-1 ring-line"
               >
                 {item}
               </li>
@@ -262,8 +264,8 @@ export const LandingPage = () => {
 
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-8">
             <div>
-              <p className="text-sm font-medium text-ink">Ready to look around?</p>
-              <p className="mt-0.5 text-xs text-muted">
+              <p className="text-lg font-bold text-ink">Ready to look around?</p>
+              <p className="mt-1 text-md text-muted">
                 Open two windows as different roles to watch the feed update live.
               </p>
             </div>
@@ -278,7 +280,7 @@ export const LandingPage = () => {
       </section>
 
       <footer className="py-8">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 text-xs text-subtle sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 text-[13px] text-subtle sm:px-6">
           <p>Velozity Dashboard — built for the Velozity Global Solutions technical assessment.</p>
           <a
             href="https://github.com/reflection-swarup/velozity-project-dashboard"
