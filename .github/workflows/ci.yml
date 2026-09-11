@@ -119,6 +119,9 @@ jobs:
       - name: Smoke suite
         run: npm run smoke
 
+      - name: Adversarial checklist
+        run: npm run attack
+
       - name: API log on failure
         if: failure()
         run: cat api.log || true
