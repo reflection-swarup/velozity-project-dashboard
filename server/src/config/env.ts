@@ -23,7 +23,13 @@ const schema = z.object({
     .transform((v) => v === 'true'),
 });
 
-const parsed = schema.safeParse(process.env);
+// Distinct secrets, so a leak of one never becomes a leak of both.
+const guarded = schema.refine((value) => value.JWT_ACCESS_SECRET !== value.JWT_REFRESH_SECRET, {
+  path: ['JWT_REFRESH_SECRET'],
+  message: 'must not be the same value as JWT_ACCESS_SECRET',
+});
+
+const parsed = guarded.safeParse(process.env);
 
 if (!parsed.success) {
   const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n');

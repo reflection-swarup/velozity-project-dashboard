@@ -197,7 +197,30 @@ const run = async () => {
     method: 'PATCH',
     body: { priority: 'LOW' },
   });
-  check('developer cannot change fields beyond status', escalate.status === 403, escalate.body);
+  check('developer cannot change priority on their own task', escalate.status === 403, escalate.body);
+
+  const renameOwn = await req(`/api/tasks/${ownTask.id}`, {
+    token: karan.token,
+    method: 'PATCH',
+    body: { title: 'Renamed by a developer' },
+  });
+  check('developer cannot change the title of their own task', renameOwn.status === 403, renameOwn.body);
+
+  const reassignOwn = await req(`/api/tasks/${ownTask.id}`, {
+    token: karan.token,
+    method: 'PATCH',
+    body: { assigneeId: sana.user.id },
+  });
+  check('developer cannot reassign their own task', reassignOwn.status === 403, reassignOwn.body);
+
+  const stillOwned = await req(`/api/tasks/${ownTask.id}`, { token: karan.token });
+  check(
+    'the rejected edits changed nothing',
+    stillOwned.body.task.title === ownTask.title &&
+      stillOwned.body.task.priority === ownTask.priority &&
+      stillOwned.body.task.assignee?.id === karan.user.id,
+    stillOwned.body.task,
+  );
 
   const devDeleteTask = await req(`/api/tasks/${ownTask.id}`, { token: karan.token, method: 'DELETE' });
   check('developer cannot delete a task', devDeleteTask.status === 403, devDeleteTask.body);
@@ -250,6 +273,16 @@ const run = async () => {
 
   const emptyPatch = await req(`/api/tasks/${ownTask.id}`, { token: admin.token, method: 'PATCH', body: {} });
   check('empty update payload is rejected', emptyPatch.status === 422, emptyPatch.body);
+
+  const absentTask = await req('/api/tasks/11111111-1111-4111-8111-111111111111', {
+    token: admin.token,
+  });
+  check('a well formed id for a missing record is 404', absentTask.status === 404, absentTask.body);
+
+  const absentProject = await req('/api/projects/11111111-1111-4111-8111-111111111111', {
+    token: admin.token,
+  });
+  check('a missing project is 404 rather than 403', absentProject.status === 404, absentProject.body);
 
   const unknownRoute = await req('/api/nope', { token: admin.token });
   check('unknown route returns a structured error', unknownRoute.status === 404 && unknownRoute.body.error.code === 'NOT_FOUND');
