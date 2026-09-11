@@ -155,6 +155,7 @@ hers.
 cd server
 npm run typecheck        # tsc --noEmit, strict
 npm run smoke            # 90 checks against a running API + WebSocket
+npm run attack           # 24 adversarial checks, the pre-deployment checklist
 npm run verify:overdue   # 7 checks on the scheduled job itself
 
 cd ../web
@@ -234,6 +235,24 @@ details; unknown routes return a structured `404`; no response contains a stack 
 
 **Dashboards** — admin totals plus overdue count plus presence, PM projects and priorities and
 this week, developer tasks sorted by priority then due date.
+
+### The adversarial checklist
+
+`npm run attack` is a separate script that attacks the API from the outside rather than
+exercising happy paths, and is what I run before deploying. It restores everything it touches, so
+it is safe to repeat.
+
+| | Attack | Result |
+|---|---|---|
+| 1 | Developer lists tasks, then retries with `?assigneeId=<another developer>` | own tasks only, then `403` with nothing returned |
+| 2 | Developer opens a project they hold no tasks on | `403` |
+| 3 | Developer reads and moves another developer's task | `403` both |
+| 4 | Developer reassigns their own task to someone else | `403`, and the assignee is re-read to confirm it is unchanged |
+| 5 | Manager lists projects, reads another manager's project, filters by their id | own only, `403`, `403` |
+| 6 | Developer moves a task while an admin, the owning manager and an unrelated developer all hold sockets | admin, assignee and manager receive it; the unrelated developer receives nothing |
+| 7 | Catch-up endpoint | a `since` timestamp, at most 20 rows, scoped to the caller |
+| 8 | Create a task already past its due date | not flagged by the API; existing overdue rows carry a timestamp |
+| 9 | Inspect the refresh cookie, rotate it, then replay the old one | `HttpOnly`, path scoped, absent from the body, rotation works, replay `401` |
 
 ### The scheduled job
 
