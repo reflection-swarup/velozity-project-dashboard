@@ -8,6 +8,20 @@ import {
 } from '../../hooks/queries';
 import { relativeTime } from '../../lib/format';
 import { Button } from '../ui/Button';
+import { IconAlert, IconBell, IconCheck, IconClock } from '../ui/Icon';
+import type { NotificationType } from '../../types';
+
+const TYPE_ICON: Record<NotificationType, (props: { className?: string }) => React.ReactElement> = {
+  TASK_ASSIGNED: IconCheck,
+  TASK_IN_REVIEW: IconClock,
+  TASK_OVERDUE: IconAlert,
+};
+
+const TYPE_TONE: Record<NotificationType, string> = {
+  TASK_ASSIGNED: 'bg-accent-soft text-accent',
+  TASK_IN_REVIEW: 'bg-warn-soft text-warn',
+  TASK_OVERDUE: 'bg-danger-soft text-danger',
+};
 
 export const NotificationBell = () => {
   const { data } = useNotifications();
@@ -34,27 +48,24 @@ export const NotificationBell = () => {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+        className="relative rounded-lg p-2 text-muted transition-colors duration-150 hover:bg-raised hover:text-ink"
         aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ''}`}
       >
-        <svg viewBox="0 0 24 24" fill="none" className="size-5" stroke="currentColor" strokeWidth="1.7">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M14.9 17.1a3 3 0 0 1-5.8 0m8.6-3.4V10a5.7 5.7 0 1 0-11.4 0v3.7L5 15.8v.9h14v-.9z"
-          />
-        </svg>
+        <IconBell className="size-4.5" />
         {unread > 0 ? (
-          <span className="absolute -top-0.5 -right-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold text-white tabular-nums">
+          <span className="absolute top-0.5 right-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white tabular-nums">
             {unread > 99 ? '99+' : unread}
           </span>
         ) : null}
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-slate-200 sm:w-96">
-          <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-            <p className="text-sm font-semibold">Notifications</p>
+        <div className="animate-fade absolute right-0 z-40 mt-2 w-[22rem] overflow-hidden rounded-xl bg-surface shadow-xl ring-1 ring-line">
+          <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
+            <p className="text-sm font-semibold text-ink">
+              Notifications
+              {unread > 0 ? <span className="ml-1.5 text-xs font-normal text-muted">{unread} unread</span> : null}
+            </p>
             <Button
               variant="ghost"
               size="sm"
@@ -65,43 +76,51 @@ export const NotificationBell = () => {
             </Button>
           </div>
 
-          <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
+          <div className="max-h-96 divide-y divide-line overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-slate-500">Nothing yet</p>
+              <p className="px-3 py-10 text-center text-sm text-muted">Nothing yet</p>
             ) : (
-              items.map((notification) => (
-                <button
-                  key={notification.id}
-                  type="button"
-                  onClick={() => {
-                    if (!notification.readAt) markRead.mutate(notification.id);
-                    if (notification.taskId) {
-                      setOpen(false);
-                      navigate(`/tasks/${notification.taskId}`);
-                    }
-                  }}
-                  className={clsx(
-                    'flex w-full gap-2 px-3 py-2.5 text-left hover:bg-slate-50',
-                    !notification.readAt && 'bg-indigo-50/50',
-                  )}
-                >
-                  <span
+              items.map((notification) => {
+                const Icon = TYPE_ICON[notification.type];
+                return (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    onClick={() => {
+                      if (!notification.readAt) markRead.mutate(notification.id);
+                      if (notification.taskId) {
+                        setOpen(false);
+                        navigate(`/tasks/${notification.taskId}`);
+                      }
+                    }}
                     className={clsx(
-                      'mt-1.5 size-2 shrink-0 rounded-full',
-                      notification.readAt ? 'bg-transparent' : 'bg-indigo-600',
+                      'flex w-full gap-2.5 px-3 py-3 text-left transition-colors duration-150 hover:bg-raised',
+                      !notification.readAt && 'bg-accent-soft/40',
                     )}
-                  />
-                  <span className="min-w-0">
-                    <span className="block text-xs font-semibold text-slate-900">
-                      {notification.title}
+                  >
+                    <span
+                      className={clsx(
+                        'mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-lg',
+                        TYPE_TONE[notification.type],
+                      )}
+                    >
+                      <Icon className="size-3.5" />
                     </span>
-                    <span className="mt-0.5 block text-xs text-slate-600">{notification.body}</span>
-                    <span className="mt-0.5 block text-[11px] text-slate-400">
-                      {relativeTime(notification.createdAt)}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-semibold text-ink">
+                        {notification.title}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted">{notification.body}</span>
+                      <span className="mt-1 block text-[11px] text-subtle">
+                        {relativeTime(notification.createdAt)}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              ))
+                    {!notification.readAt ? (
+                      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent" />
+                    ) : null}
+                  </button>
+                );
+              })
             )}
           </div>
         </div>

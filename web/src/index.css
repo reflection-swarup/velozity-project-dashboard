@@ -1,7 +1,81 @@
 @import 'tailwindcss';
 
-@theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* One palette, two themes. Components only ever reference these tokens, so the
+   dark theme is a variable swap rather than a class override per element. */
+:root {
+  --c-canvas: #f5f6f8;
+  --c-surface: #ffffff;
+  --c-raised: #f1f3f7;
+  --c-line: #e3e6eb;
+  --c-line-strong: #d2d7df;
+  --c-ink: #111726;
+  --c-ink-muted: #5f6b7f;
+  --c-ink-subtle: #8b95a7;
+  --c-accent: #2f5fe0;
+  --c-accent-hover: #2950c4;
+  --c-accent-soft: #edf2ff;
+  --c-accent-ink: #ffffff;
+  --c-success: #0f8a5f;
+  --c-success-soft: #e6f6ef;
+  --c-warn: #b26a00;
+  --c-warn-soft: #fdf3e3;
+  --c-danger: #c92f3c;
+  --c-danger-soft: #fdecee;
+  --c-info: #1f6fb2;
+  --c-info-soft: #e9f3fb;
+  --c-shadow: 220 25% 20%;
+}
+
+.dark {
+  --c-canvas: #0c1017;
+  --c-surface: #141922;
+  --c-raised: #1b212c;
+  --c-line: #262d3a;
+  --c-line-strong: #333c4c;
+  --c-ink: #e6eaf2;
+  --c-ink-muted: #9aa5b8;
+  --c-ink-subtle: #6f7b8e;
+  --c-accent: #4b7bf5;
+  --c-accent-hover: #5e89f7;
+  --c-accent-soft: #1a2540;
+  --c-accent-ink: #ffffff;
+  --c-success: #3ec08a;
+  --c-success-soft: #12291f;
+  --c-warn: #e0a24a;
+  --c-warn-soft: #2b2113;
+  --c-danger: #f0707c;
+  --c-danger-soft: #2e1518;
+  --c-info: #64a8e0;
+  --c-info-soft: #14222e;
+  --c-shadow: 220 60% 2%;
+}
+
+@theme inline {
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --color-canvas: var(--c-canvas);
+  --color-surface: var(--c-surface);
+  --color-raised: var(--c-raised);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-ink-muted);
+  --color-subtle: var(--c-ink-subtle);
+  --color-accent: var(--c-accent);
+  --color-accent-hover: var(--c-accent-hover);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-success: var(--c-success);
+  --color-success-soft: var(--c-success-soft);
+  --color-warn: var(--c-warn);
+  --color-warn-soft: var(--c-warn-soft);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-info: var(--c-info);
+  --color-info-soft: var(--c-info-soft);
 }
 
 html,
@@ -11,9 +85,85 @@ body,
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background-color: var(--c-canvas);
+  color: var(--c-ink);
+  -webkit-font-smoothing: antialiased;
 }
 
 :focus-visible {
-  @apply outline-2 outline-offset-2 outline-indigo-500;
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: var(--c-accent-soft);
+}
+
+/* Motion is deliberately small: a short fade for content that streams in, and
+   nothing that moves more than a few pixels. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-soft {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.22s ease-out both;
+}
+
+.animate-fade {
+  animation: fade 0.18s ease-out both;
+}
+
+.skeleton {
+  background-color: var(--c-raised);
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbars that match the theme instead of punching a light hole in dark mode */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-line-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--c-line-strong);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 9999px;
 }

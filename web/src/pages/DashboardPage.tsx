@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { TaskList } from '../components/TaskList';
+import { PageHeader } from '../components/layout/AppShell';
 import { Card, CardHeader, StatCard } from '../components/ui/Card';
-import { EmptyState, ErrorState, Loading } from '../components/ui/Feedback';
+import { CardSkeleton, EmptyState, ErrorState } from '../components/ui/Feedback';
 import { ProjectStatusBadge } from '../components/ui/Badge';
 import { useDashboard } from '../hooks/queries';
 import { useSocket } from '../realtime/SocketProvider';
@@ -24,12 +25,12 @@ const StatusBreakdown = ({ counts }: { counts: StatusCounts }) => {
       {STATUS_ORDER.map((status) => (
         <div key={status}>
           <div className="flex justify-between text-xs">
-            <span className="text-slate-600">{STATUS_LABELS[status]}</span>
-            <span className="font-medium text-slate-900 tabular-nums">{counts[status]}</span>
+            <span className="text-muted">{STATUS_LABELS[status]}</span>
+            <span className="font-medium text-ink tabular-nums">{counts[status]}</span>
           </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-raised">
             <div
-              className="h-full rounded-full bg-indigo-500"
+              className="h-full rounded-full bg-accent"
               style={{ width: `${(counts[status] / total) * 100}%` }}
             />
           </div>
@@ -42,9 +43,9 @@ const StatusBreakdown = ({ counts }: { counts: StatusCounts }) => {
 const PriorityBreakdown = ({ counts }: { counts: PriorityCounts }) => (
   <div className="grid grid-cols-2 gap-3 px-4 py-3">
     {PRIORITY_ORDER.map((priority) => (
-      <div key={priority} className="rounded-lg bg-slate-50 px-3 py-2">
-        <p className="text-xs text-slate-500">{PRIORITY_LABELS[priority]}</p>
-        <p className="text-lg font-semibold text-slate-900 tabular-nums">{counts[priority]}</p>
+      <div key={priority} className="rounded-lg bg-raised px-3 py-2">
+        <p className="text-xs text-muted">{PRIORITY_LABELS[priority]}</p>
+        <p className="text-lg font-semibold text-ink tabular-nums">{counts[priority]}</p>
       </div>
     ))}
   </div>
@@ -85,22 +86,22 @@ const AdminView = ({ data }: { data: AdminDashboard }) => {
         <Card className="overflow-hidden">
           <CardHeader title="Quick links" />
           <div className="space-y-1 px-4 py-3 text-sm">
-            <Link className="block text-indigo-600 hover:underline" to="/tasks?overdue=true">
+            <Link className="block text-accent hover:underline" to="/tasks?overdue=true">
               Overdue tasks ({data.overdueCount})
             </Link>
             <Link
-              className="block text-indigo-600 hover:underline"
+              className="block text-accent hover:underline"
               to="/tasks?status=IN_REVIEW&sort=dueDate&order=asc"
             >
               Waiting on review
             </Link>
             <Link
-              className="block text-indigo-600 hover:underline"
+              className="block text-accent hover:underline"
               to="/tasks?priority=CRITICAL&status=TODO,IN_PROGRESS"
             >
               Critical and not done
             </Link>
-            <Link className="block text-indigo-600 hover:underline" to="/users">
+            <Link className="block text-accent hover:underline" to="/users">
               Manage team
             </Link>
           </div>
@@ -135,20 +136,20 @@ const ManagerView = ({ data }: { data: ManagerDashboard }) => (
         {data.projects.length === 0 ? (
           <EmptyState title="No projects yet" hint="Create one from the Projects tab" />
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {data.projects.map((project) => (
               <li key={project.id} className="px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
                   <Link
                     to={`/projects/${project.id}`}
-                    className="text-sm font-medium text-slate-900 hover:text-indigo-700"
+                    className="text-sm font-medium text-ink hover:text-accent"
                   >
                     {project.name}
                   </Link>
                   <ProjectStatusBadge status={project.status} />
                 </div>
-                <p className="mt-0.5 text-xs text-slate-500">{project.client.name}</p>
-                <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-600">
+                <p className="mt-0.5 text-xs text-muted">{project.client.name}</p>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted">
                   {STATUS_ORDER.map((status) => (
                     <span key={status}>
                       {STATUS_LABELS[status]}:{' '}
@@ -211,21 +212,22 @@ export const DashboardPage = () => {
   const { user } = useAuth();
   const { data, isPending, isError, error } = useDashboard();
 
-  if (isPending) return <Loading label="Loading dashboard" />;
+  if (isPending) return <CardSkeleton count={5} />;
   if (isError) return <ErrorState error={error} />;
 
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-lg font-semibold text-slate-900">Welcome back, {user?.name}</h1>
-        <p className="text-sm text-slate-500">
-          {data.role === 'ADMIN'
-            ? 'Everything across the agency'
+      <PageHeader
+        title={`Welcome back, ${user?.name.split(' ')[0] ?? ''}`}
+        description={
+          data.role === 'ADMIN'
+            ? 'Everything across the agency, updating live'
             : data.role === 'PROJECT_MANAGER'
               ? 'Your projects and your team'
-              : 'Your assigned work'}
-        </p>
-      </div>
+              : 'Your assigned work, highest priority first'
+        }
+        breadcrumbs={[{ label: 'Home' }, { label: 'Overview' }]}
+      />
 
       {data.role === 'ADMIN' ? <AdminView data={data} /> : null}
       {data.role === 'PROJECT_MANAGER' ? <ManagerView data={data} /> : null}

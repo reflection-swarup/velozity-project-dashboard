@@ -73,7 +73,7 @@ export const TaskFilters = ({ assignees, projects }: Props) => {
   const activeCount = API_PARAMS.filter((key) => key !== 'limit' && params.get(key)).length;
 
   return (
-    <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <div className="rounded-xl bg-surface p-4 ring-1 ring-line">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-48 flex-1">
           <Label htmlFor="task-search">Search</Label>
@@ -164,17 +164,17 @@ export const TaskFilters = ({ assignees, projects }: Props) => {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-xs font-medium text-slate-500">Status</span>
+        <span className="mr-1 text-xs font-medium text-muted">Status</span>
         {STATUS_ORDER.map((status: TaskStatus) => (
           <button
             key={status}
             type="button"
             onClick={() => toggleList('status', status)}
             className={clsx(
-              'rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition',
+              'rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition-colors duration-150',
               statuses.includes(status)
-                ? 'bg-indigo-600 text-white ring-indigo-600'
-                : 'bg-white text-slate-600 ring-slate-300 hover:bg-slate-50',
+                ? 'bg-accent text-accent-ink ring-accent'
+                : 'bg-surface text-muted ring-line hover:bg-raised',
             )}
           >
             {STATUS_LABELS[status]}
@@ -183,17 +183,17 @@ export const TaskFilters = ({ assignees, projects }: Props) => {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-xs font-medium text-slate-500">Priority</span>
+        <span className="mr-1 text-xs font-medium text-muted">Priority</span>
         {PRIORITY_ORDER.map((priority: TaskPriority) => (
           <button
             key={priority}
             type="button"
             onClick={() => toggleList('priority', priority)}
             className={clsx(
-              'rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition',
+              'rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition-colors duration-150',
               priorities.includes(priority)
-                ? 'bg-indigo-600 text-white ring-indigo-600'
-                : 'bg-white text-slate-600 ring-slate-300 hover:bg-slate-50',
+                ? 'bg-accent text-accent-ink ring-accent'
+                : 'bg-surface text-muted ring-line hover:bg-raised',
             )}
           >
             {PRIORITY_LABELS[priority]}
@@ -204,17 +204,17 @@ export const TaskFilters = ({ assignees, projects }: Props) => {
           type="button"
           onClick={() => update('overdue', params.get('overdue') === 'true' ? null : 'true')}
           className={clsx(
-            'ml-2 rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition',
+            'ml-2 rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition-colors duration-150',
             params.get('overdue') === 'true'
-              ? 'bg-rose-600 text-white ring-rose-600'
-              : 'bg-white text-slate-600 ring-slate-300 hover:bg-slate-50',
+              ? 'bg-danger text-white ring-danger'
+              : 'bg-surface text-muted ring-line hover:bg-raised',
           )}
         >
           Overdue only
         </button>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+      <div className="mt-3 flex items-center gap-2 border-t border-line pt-3">
         <Button
           variant="secondary"
           size="sm"

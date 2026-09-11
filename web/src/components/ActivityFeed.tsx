@@ -4,33 +4,66 @@ import { useActivityFeed, useMarkCaughtUp, useMissedActivity } from '../hooks/qu
 import { relativeTime } from '../lib/format';
 import { Button } from './ui/Button';
 import { Card, CardHeader } from './ui/Card';
-import { EmptyState, ErrorState, Loading, Spinner } from './ui/Feedback';
+import { Avatar } from './ui/Avatar';
+import { EmptyState, ErrorState, ListSkeleton, Spinner } from './ui/Feedback';
 import { useSocket } from '../realtime/SocketProvider';
 import type { Activity, ActivityType } from '../types';
 
-const DOT_STYLES: Record<ActivityType, string> = {
-  PROJECT_CREATED: 'bg-indigo-500',
-  TASK_CREATED: 'bg-sky-500',
-  TASK_STATUS_CHANGED: 'bg-emerald-500',
-  TASK_ASSIGNED: 'bg-violet-500',
-  TASK_UPDATED: 'bg-slate-400',
-  TASK_OVERDUE: 'bg-rose-500',
-  TASK_DELETED: 'bg-slate-500',
+const TYPE_TONE: Record<ActivityType, string> = {
+  PROJECT_CREATED: 'bg-accent',
+  TASK_CREATED: 'bg-info',
+  TASK_STATUS_CHANGED: 'bg-success',
+  TASK_ASSIGNED: 'bg-accent',
+  TASK_UPDATED: 'bg-line-strong',
+  TASK_OVERDUE: 'bg-danger',
+  TASK_DELETED: 'bg-subtle',
 };
 
-// The server sends the sentence already formatted; the client only ever adds
-// the relative timestamp so the socket event and the REST catch-up read alike.
-const ActivityRow = ({ activity, showProject }: { activity: Activity; showProject: boolean }) => (
-  <li className="flex gap-3 px-4 py-2.5">
-    <span className={clsx('mt-1.5 size-2 shrink-0 rounded-full', DOT_STYLES[activity.type])} />
-    <div className="min-w-0">
-      <p className="text-sm text-slate-800">
-        {activity.message}
-        <span className="text-slate-400"> · {relativeTime(activity.createdAt)}</span>
+// The server ships the sentence already formatted, so the client only appends
+// the relative time. That keeps the socket event and the REST catch-up
+// identical on screen.
+const ActivityRow = ({
+  activity,
+  showProject,
+  isNew,
+}: {
+  activity: Activity;
+  showProject: boolean;
+  isNew: boolean;
+}) => (
+  <li
+    className={clsx(
+      'relative flex gap-3 px-4 py-3',
+      isNew && 'animate-rise bg-accent-soft/30',
+    )}
+  >
+    <span className="relative flex flex-col items-center">
+      {activity.actorId ? (
+        <Avatar name={activity.actorName} className="size-7 text-[10px]" />
+      ) : (
+        <span className="inline-flex size-7 items-center justify-center rounded-full bg-raised text-[10px] font-semibold text-muted">
+          SYS
+        </span>
+      )}
+      <span
+        className={clsx(
+          'absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-surface',
+          TYPE_TONE[activity.type],
+        )}
+      />
+    </span>
+
+    <div className="min-w-0 flex-1">
+      <p className="text-sm leading-snug text-ink">{activity.message}</p>
+      <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-subtle">
+        <span>{relativeTime(activity.createdAt)}</span>
+        {showProject && activity.projectName ? (
+          <>
+            <span>·</span>
+            <span className="truncate">{activity.projectName}</span>
+          </>
+        ) : null}
       </p>
-      {showProject && activity.projectName ? (
-        <p className="mt-0.5 text-xs text-slate-500">{activity.projectName}</p>
-      ) : null}
     </div>
   </li>
 );
@@ -44,14 +77,14 @@ const MissedBanner = () => {
   if (dismissed || items.length === 0) return null;
 
   return (
-    <div className="border-b border-amber-200 bg-amber-50 px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
+    <div className="animate-fade border-b border-line bg-warn-soft px-4 py-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-amber-900">
+          <p className="text-sm font-medium text-ink">
             {items.length} update{items.length === 1 ? '' : 's'} while you were away
           </p>
-          <p className="mt-0.5 text-xs text-amber-700">
-            Loaded from the database since {relativeTime(missed.data?.since ?? '')}
+          <p className="mt-0.5 text-xs text-muted">
+            Replayed from the database, last seen {relativeTime(missed.data?.since ?? '')}
           </p>
         </div>
         <Button
@@ -65,15 +98,15 @@ const MissedBanner = () => {
           Caught up
         </Button>
       </div>
+
       <ul className="mt-2 space-y-1">
-        {items.slice(0, 5).map((activity) => (
-          <li key={activity.id} className="text-xs text-amber-800">
+        {items.slice(0, 4).map((activity) => (
+          <li key={activity.id} className="truncate text-xs text-muted">
             {activity.message}
-            <span className="text-amber-600"> · {relativeTime(activity.createdAt)}</span>
           </li>
         ))}
-        {items.length > 5 ? (
-          <li className="text-xs text-amber-600">and {items.length - 5} more below</li>
+        {items.length > 4 ? (
+          <li className="text-xs text-subtle">and {items.length - 4} more in the feed below</li>
         ) : null}
       </ul>
     </div>
@@ -97,9 +130,10 @@ export const ActivityFeed = ({
 }: Props) => {
   const feed = useActivityFeed(projectId);
   const { connected, subscribeToProject } = useSocket();
+  const [firstSeenId, setFirstSeenId] = useState<string | null>(null);
 
-  // Joining the project room is what turns this into a live view for everyone
-  // currently looking at the same project.
+  // Joining the project room is what makes this live for everyone currently
+  // looking at the same project.
   useEffect(() => {
     if (!projectId) return;
     return subscribeToProject(projectId);
@@ -107,16 +141,23 @@ export const ActivityFeed = ({
 
   const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
 
+  useEffect(() => {
+    if (firstSeenId === null && items.length > 0) setFirstSeenId(items[0]!.id);
+  }, [items, firstSeenId]);
+
+  const newestIndex = firstSeenId ? items.findIndex((item) => item.id === firstSeenId) : -1;
+
   return (
     <Card className={clsx('overflow-hidden', className)}>
       <CardHeader
         title={title}
         subtitle={subtitle}
         action={
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
-            <span
-              className={clsx('size-2 rounded-full', connected ? 'bg-emerald-500' : 'bg-amber-500')}
-            />
+          <span
+            className="inline-flex items-center gap-1.5 rounded-md bg-raised px-2 py-1 text-xs text-muted"
+            title={connected ? 'Receiving live updates' : 'Reconnecting'}
+          >
+            <span className={clsx('size-1.5 rounded-full', connected ? 'bg-success' : 'bg-warn')} />
             {connected ? 'Live' : 'Reconnecting'}
           </span>
         }
@@ -124,21 +165,26 @@ export const ActivityFeed = ({
 
       {showMissed ? <MissedBanner /> : null}
 
-      {feed.isPending ? <Loading label="Loading activity" /> : null}
+      {feed.isPending ? <ListSkeleton rows={5} /> : null}
       {feed.isError ? <ErrorState error={feed.error} /> : null}
 
       {feed.isSuccess && items.length === 0 ? (
-        <EmptyState title="No activity yet" hint="Changes will appear here as they happen" />
+        <EmptyState title="No activity yet" hint="Changes appear here the moment they happen" />
       ) : null}
 
-      <ul className="divide-y divide-slate-100">
-        {items.map((activity) => (
-          <ActivityRow key={activity.id} activity={activity} showProject={!projectId} />
+      <ul className="divide-y divide-line">
+        {items.map((activity, index) => (
+          <ActivityRow
+            key={activity.id}
+            activity={activity}
+            showProject={!projectId}
+            isNew={newestIndex > 0 && index < newestIndex}
+          />
         ))}
       </ul>
 
       {feed.hasNextPage ? (
-        <div className="border-t border-slate-100 px-4 py-3">
+        <div className="border-t border-line px-4 py-3">
           <Button
             variant="secondary"
             size="sm"

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCreateUser, useUpdateUser, useUsers } from '../hooks/queries';
+import { PageHeader } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -105,38 +106,35 @@ export const UsersPage = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Team</h1>
-          <p className="text-sm text-slate-500">
-            Changing a role or deactivating a user revokes their refresh tokens immediately
-          </p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>Add member</Button>
-      </div>
+      <PageHeader
+        title="Team"
+        description="Changing a role or deactivating a user revokes their refresh tokens immediately"
+        breadcrumbs={[{ label: 'Home', to: '/dashboard' }, { label: 'Team' }]}
+        actions={<Button onClick={() => setDialogOpen(true)}>Add member</Button>}
+      />
 
       {users.isPending ? <Loading label="Loading team" /> : null}
       {users.isError ? <ErrorState error={users.error} /> : null}
 
       {users.isSuccess ? (
         <Card className="overflow-hidden">
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {users.data.items.map((member) => (
               <li key={member.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <Avatar name={member.name} online={member.isOnline} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-900">
+                  <p className="text-sm font-medium text-ink">
                     {member.name}
                     {member.isActive ? null : (
-                      <span className="ml-2 text-xs font-normal text-slate-400">deactivated</span>
+                      <span className="ml-2 text-xs font-normal text-subtle">deactivated</span>
                     )}
                   </p>
-                  <p className="text-xs text-slate-500">{member.email}</p>
+                  <p className="text-xs text-muted">{member.email}</p>
                 </div>
 
                 <Badge>{ROLE_LABELS[member.role]}</Badge>
 
-                <span className="w-28 text-xs text-slate-500">
+                <span className="w-28 text-xs text-muted">
                   {member.isOnline ? 'Online now' : `Seen ${relativeTime(member.lastSeenAt)}`}
                 </span>
 

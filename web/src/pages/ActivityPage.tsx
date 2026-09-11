@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { ActivityFeed } from '../components/ActivityFeed';
+import { PageHeader } from '../components/layout/AppShell';
 import { Select } from '../components/ui/Field';
 import { useProjects } from '../hooks/queries';
 import { useAuth } from '../auth/AuthProvider';
@@ -19,14 +20,13 @@ export const ActivityPage = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Activity</h1>
-          <p className="text-sm text-slate-500">{scopeNote}</p>
-        </div>
-
-        {user?.role !== 'DEVELOPER' ? (
-          <Select
+      <PageHeader
+        title="Activity"
+        description={scopeNote}
+        breadcrumbs={[{ label: 'Home', to: '/dashboard' }, { label: 'Activity' }]}
+        actions={
+          user?.role !== 'DEVELOPER' ? (
+            <Select
             aria-label="Filter by project"
             className="w-60"
             value={projectId}
@@ -42,10 +42,11 @@ export const ActivityPage = () => {
               <option key={project.id} value={project.id}>
                 {project.name}
               </option>
-            ))}
-          </Select>
-        ) : null}
-      </div>
+              ))}
+            </Select>
+          ) : null
+        }
+      />
 
       <ActivityFeed
         key={projectId || 'all'}

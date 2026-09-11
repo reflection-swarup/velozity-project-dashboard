@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { TaskDialog } from '../components/TaskDialog';
+import { PageHeader } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader } from '../components/ui/Card';
 import { OverdueBadge, PriorityBadge, StatusBadge } from '../components/ui/Badge';
@@ -42,26 +43,15 @@ export const TaskDetailPage = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-slate-500">
-            <Link to={`/projects/${data.project.id}`} className="hover:underline">
-              {data.project.name}
-            </Link>
-            <span> · Task #{data.number}</span>
-          </p>
-          <h1 className="mt-1 text-lg font-semibold text-slate-900">{data.title}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <StatusBadge status={data.status} />
-            <PriorityBadge priority={data.priority} />
-            {data.isOverdue ? <OverdueBadge /> : null}
-            <span className={clsx('text-xs', data.isOverdue ? 'text-rose-600' : 'text-slate-500')}>
-              {dueLabel(data)}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title={data.title}
+        breadcrumbs={[
+          { label: 'Projects', to: '/projects' },
+          { label: data.project.name, to: `/projects/${data.project.id}` },
+          { label: `Task #${data.number}` },
+        ]}
+        actions={
+          <>
           {canMove ? (
             <Select
               aria-label="Change status"
@@ -96,49 +86,59 @@ export const TaskDetailPage = () => {
               </Button>
             </>
           ) : null}
-        </div>
+          </>
+        }
+      />
+
+      <div className="-mt-2 flex flex-wrap items-center gap-2">
+        <StatusBadge status={data.status} />
+        <PriorityBadge priority={data.priority} />
+        {data.isOverdue ? <OverdueBadge /> : null}
+        <span className={clsx('text-xs', data.isOverdue ? 'text-danger' : 'text-muted')}>
+          {dueLabel(data)}
+        </span>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="overflow-hidden lg:col-span-2">
           <CardHeader title="Description" />
-          <div className="px-4 py-3 text-sm whitespace-pre-wrap text-slate-700">
-            {data.description || <span className="text-slate-400">No description</span>}
+          <div className="px-4 py-3 text-sm whitespace-pre-wrap text-ink">
+            {data.description || <span className="text-subtle">No description</span>}
           </div>
         </Card>
 
         <Card className="overflow-hidden">
           <CardHeader title="Details" />
-          <dl className="divide-y divide-slate-100 text-sm">
+          <dl className="divide-y divide-line text-sm">
             <div className="flex items-center justify-between px-4 py-2.5">
-              <dt className="text-xs text-slate-500">Assignee</dt>
+              <dt className="text-xs text-muted">Assignee</dt>
               <dd className="flex items-center gap-1.5">
                 {data.assignee ? (
                   <>
                     <Avatar name={data.assignee.name} className="size-6 text-[10px]" />
-                    <span className="text-xs text-slate-700">{data.assignee.name}</span>
+                    <span className="text-xs text-ink">{data.assignee.name}</span>
                   </>
                 ) : (
-                  <span className="text-xs text-slate-400">Unassigned</span>
+                  <span className="text-xs text-subtle">Unassigned</span>
                 )}
               </dd>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5">
-              <dt className="text-xs text-slate-500">Due date</dt>
-              <dd className="text-xs text-slate-700">{formatDate(data.dueDate)}</dd>
+              <dt className="text-xs text-muted">Due date</dt>
+              <dd className="text-xs text-ink">{formatDate(data.dueDate)}</dd>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5">
-              <dt className="text-xs text-slate-500">Created by</dt>
-              <dd className="text-xs text-slate-700">{data.createdBy.name}</dd>
+              <dt className="text-xs text-muted">Created by</dt>
+              <dd className="text-xs text-ink">{data.createdBy.name}</dd>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5">
-              <dt className="text-xs text-slate-500">Created</dt>
-              <dd className="text-xs text-slate-700">{formatDateTime(data.createdAt)}</dd>
+              <dt className="text-xs text-muted">Created</dt>
+              <dd className="text-xs text-ink">{formatDateTime(data.createdAt)}</dd>
             </div>
             {data.completedAt ? (
               <div className="flex items-center justify-between px-4 py-2.5">
-                <dt className="text-xs text-slate-500">Completed</dt>
-                <dd className="text-xs text-slate-700">{formatDateTime(data.completedAt)}</dd>
+                <dt className="text-xs text-muted">Completed</dt>
+                <dd className="text-xs text-ink">{formatDateTime(data.completedAt)}</dd>
               </div>
             ) : null}
           </dl>
@@ -152,11 +152,11 @@ export const TaskDetailPage = () => {
         {activity.isSuccess && activity.data.items.length === 0 ? (
           <EmptyState title="No history yet" />
         ) : null}
-        <ol className="divide-y divide-slate-100">
+        <ol className="divide-y divide-line">
           {(activity.data?.items ?? []).map((item) => (
             <li key={item.id} className="px-4 py-2.5">
-              <p className="text-sm text-slate-800">{item.message}</p>
-              <p className="mt-0.5 text-xs text-slate-400">
+              <p className="text-sm text-ink">{item.message}</p>
+              <p className="mt-0.5 text-xs text-subtle">
                 {formatDateTime(item.createdAt)} · {relativeTime(item.createdAt)}
               </p>
             </li>

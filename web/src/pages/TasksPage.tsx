@@ -4,9 +4,10 @@ import clsx from 'clsx';
 import { TaskFilters, useTaskQuery } from '../components/TaskFilters';
 import { TaskBoard, TaskList } from '../components/TaskList';
 import { TaskDialog } from '../components/TaskDialog';
+import { PageHeader } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { EmptyState, ErrorState, Loading } from '../components/ui/Feedback';
+import { EmptyState, ErrorState, ListSkeleton } from '../components/ui/Feedback';
 import { useProjects, useTasks, useUsers } from '../hooks/queries';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -29,35 +30,35 @@ export const TasksPage = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Tasks</h1>
-          <p className="text-sm text-slate-500">
-            {user?.role === 'DEVELOPER'
-              ? 'Only the tasks assigned to you'
-              : 'Filters are stored in the URL and can be shared'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg bg-slate-100 p-0.5">
-            {(['list', 'board'] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setView(option)}
-                className={clsx(
-                  'rounded-md px-3 py-1.5 text-xs font-medium capitalize transition',
-                  view === option ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600',
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-          {canManage ? <Button onClick={() => setDialogOpen(true)}>New task</Button> : null}
-        </div>
-      </div>
+      <PageHeader
+        title={user?.role === 'DEVELOPER' ? 'My tasks' : 'Tasks'}
+        description={
+          user?.role === 'DEVELOPER'
+            ? 'Only the tasks assigned to you'
+            : 'Every filter is stored in the URL, so this view is shareable as a link'
+        }
+        breadcrumbs={[{ label: 'Home', to: '/dashboard' }, { label: 'Tasks' }]}
+        actions={
+          <>
+            <div className="flex rounded-lg bg-raised p-0.5">
+              {(['list', 'board'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setView(option)}
+                  className={clsx(
+                    'rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors duration-150',
+                    view === option ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink',
+                  )}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            {canManage ? <Button onClick={() => setDialogOpen(true)}>New task</Button> : null}
+          </>
+        }
+      />
 
       <TaskFilters
         projects={projects.data?.items.map((project) => ({ id: project.id, name: project.name }))}
@@ -68,12 +69,16 @@ export const TasksPage = () => {
         }
       />
 
-      {tasks.isPending ? <Loading label="Loading tasks" /> : null}
+      {tasks.isPending ? (
+        <Card className="overflow-hidden">
+          <ListSkeleton rows={6} />
+        </Card>
+      ) : null}
       {tasks.isError ? <ErrorState error={tasks.error} /> : null}
 
       {tasks.isSuccess ? (
         <>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted">
             {tasks.data.total} task{tasks.data.total === 1 ? '' : 's'} match
           </p>
 

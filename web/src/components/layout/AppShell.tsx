@@ -1,127 +1,89 @@
-import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import clsx from 'clsx';
-import { useAuth } from '../../auth/AuthProvider';
-import { useSocket } from '../../realtime/SocketProvider';
-import { ROLE_LABELS } from '../../lib/format';
-import { Avatar } from '../ui/Avatar';
-import { Button } from '../ui/Button';
-import { NotificationBell } from './NotificationBell';
-import type { Role } from '../../types';
+import { useEffect, useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
+import { Topbar } from './Topbar';
+import { IconChevronRight } from '../ui/Icon';
 
-type NavItem = { to: string; label: string; roles: Role[] };
+export const PageHeader = ({
+  title,
+  description,
+  breadcrumbs,
+  actions,
+  tabs,
+}: {
+  title: string;
+  description?: string;
+  breadcrumbs?: { label: string; to?: string }[];
+  actions?: React.ReactNode;
+  tabs?: React.ReactNode;
+}) => (
+  <div className="mb-5">
+    {breadcrumbs && breadcrumbs.length > 0 ? (
+      <nav className="mb-1.5 flex items-center gap-1 text-xs text-muted" aria-label="Breadcrumb">
+        {breadcrumbs.map((crumb, index) => (
+          <span key={crumb.label} className="flex items-center gap-1">
+            {index > 0 ? <IconChevronRight className="size-3 text-subtle" /> : null}
+            {crumb.to ? (
+              <Link to={crumb.to} className="transition-colors hover:text-ink">
+                {crumb.label}
+              </Link>
+            ) : (
+              <span className="text-ink">{crumb.label}</span>
+            )}
+          </span>
+        ))}
+      </nav>
+    ) : null}
 
-const NAV: NavItem[] = [
-  { to: '/', label: 'Dashboard', roles: ['ADMIN', 'PROJECT_MANAGER', 'DEVELOPER'] },
-  { to: '/projects', label: 'Projects', roles: ['ADMIN', 'PROJECT_MANAGER', 'DEVELOPER'] },
-  { to: '/tasks', label: 'Tasks', roles: ['ADMIN', 'PROJECT_MANAGER', 'DEVELOPER'] },
-  { to: '/activity', label: 'Activity', roles: ['ADMIN', 'PROJECT_MANAGER', 'DEVELOPER'] },
-  { to: '/clients', label: 'Clients', roles: ['ADMIN'] },
-  { to: '/users', label: 'Team', roles: ['ADMIN'] },
-];
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
+        {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+      </div>
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+    </div>
 
-const ConnectionDot = () => {
-  const { connected } = useSocket();
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
-      <span
-        className={clsx('size-2 rounded-full', connected ? 'bg-emerald-500' : 'bg-amber-500')}
-        title={connected ? 'Live updates connected' : 'Reconnecting'}
-      />
-      {connected ? 'Live' : 'Offline'}
-    </span>
-  );
-};
+    {tabs ? <div className="mt-4 border-b border-line">{tabs}</div> : null}
+  </div>
+);
 
 export const AppShell = () => {
-  const { user, logout } = useAuth();
-  const { presence } = useSocket();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+  const location = useLocation();
 
-  if (!user) return null;
-
-  const items = NAV.filter((item) => item.roles.includes(user.role));
+  useEffect(() => {
+    setNavOpen(false);
+  }, [location.pathname]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
-              V
-            </span>
-            <div className="hidden sm:block">
-              <p className="text-sm font-semibold leading-tight">Velozity</p>
-              <p className="text-xs leading-tight text-slate-500">Project Dashboard</p>
-            </div>
-          </div>
+    <div className="flex min-h-full">
+      <aside className="hidden w-64 shrink-0 border-r border-line lg:block">
+        <div className="sticky top-0 h-screen">
+          <Sidebar />
+        </div>
+      </aside>
 
-          <div className="ml-auto flex items-center gap-3">
-            <ConnectionDot />
-            {user.role === 'ADMIN' ? (
-              <span className="hidden items-center gap-1.5 text-xs text-slate-500 sm:inline-flex">
-                <span className="size-2 rounded-full bg-emerald-500" />
-                {presence.onlineCount} online
-              </span>
-            ) : null}
-            <NotificationBell />
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMenuOpen((open) => !open)}
-                className="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-slate-100"
-              >
-                <Avatar name={user.name} />
-                <span className="hidden text-left sm:block">
-                  <span className="block text-xs font-medium leading-tight">{user.name}</span>
-                  <span className="block text-xs leading-tight text-slate-500">
-                    {ROLE_LABELS[user.role]}
-                  </span>
-                </span>
-              </button>
-              {menuOpen ? (
-                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-white p-3 shadow-lg ring-1 ring-slate-200">
-                  <p className="text-xs font-medium text-slate-900">{user.name}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{user.email}</p>
-                  <p className="mt-2 text-xs text-slate-500">{ROLE_LABELS[user.role]}</p>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="mt-3 w-full"
-                    onClick={() => void logout()}
-                  >
-                    Sign out
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+      {navOpen ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/45"
+            onClick={() => setNavOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="animate-fade absolute inset-y-0 left-0 w-72 border-r border-line shadow-2xl">
+            <Sidebar onNavigate={() => setNavOpen(false)} />
           </div>
         </div>
+      ) : null}
 
-        <nav className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-3 pb-1">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                clsx(
-                  'rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition',
-                  isActive
-                    ? 'border-indigo-600 text-indigo-700'
-                    : 'border-transparent text-slate-600 hover:text-slate-900',
-                )
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
-        <Outlet />
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar onOpenNav={() => setNavOpen(true)} />
+        <main className="flex-1 px-4 py-6 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

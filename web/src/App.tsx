@@ -3,6 +3,7 @@ import { useAuth } from './auth/AuthProvider';
 import { SocketProvider } from './realtime/SocketProvider';
 import { AppShell } from './components/layout/AppShell';
 import { Loading } from './components/ui/Feedback';
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
@@ -27,16 +28,17 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   return <SocketProvider>{children}</SocketProvider>;
 };
 
-// Navigation guard only. The API enforces the same rules again on every call,
-// so hiding a route is convenience and never the actual protection.
+// Navigation guard only. The API enforces the same rules on every call, so
+// hiding a route is a convenience and never the actual protection.
 const RequireRole = ({ roles, children }: { roles: Role[]; children: React.ReactNode }) => {
   const { user } = useAuth();
   if (!user) return null;
-  return roles.includes(user.role) ? children : <Navigate to="/" replace />;
+  return roles.includes(user.role) ? children : <Navigate to="/dashboard" replace />;
 };
 
 export const App = () => (
   <Routes>
+    <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<LoginPage />} />
 
     <Route
@@ -46,7 +48,7 @@ export const App = () => (
         </RequireAuth>
       }
     >
-      <Route index element={<DashboardPage />} />
+      <Route path="dashboard" element={<DashboardPage />} />
       <Route path="projects" element={<ProjectsPage />} />
       <Route path="projects/:id" element={<ProjectDetailPage />} />
       <Route path="tasks" element={<TasksPage />} />

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useClients, useCreateProject, useProjects, useUsers } from '../hooks/queries';
+import { PageHeader } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ProjectStatusBadge } from '../components/ui/Badge';
@@ -117,19 +118,18 @@ export const ProjectsPage = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Projects</h1>
-          <p className="text-sm text-slate-500">
-            {user?.role === 'ADMIN'
-              ? 'Every client project'
-              : user?.role === 'PROJECT_MANAGER'
-                ? 'Projects you manage'
-                : 'Projects you have tasks on'}
-          </p>
-        </div>
-        {canCreate ? <Button onClick={() => setDialogOpen(true)}>New project</Button> : null}
-      </div>
+      <PageHeader
+        title="Projects"
+        description={
+          user?.role === 'ADMIN'
+            ? 'Every client project across the agency'
+            : user?.role === 'PROJECT_MANAGER'
+              ? 'Projects you manage — another manager’s work is not visible here'
+              : 'Projects you hold tasks on'
+        }
+        breadcrumbs={[{ label: 'Home', to: '/dashboard' }, { label: 'Projects' }]}
+        actions={canCreate ? <Button onClick={() => setDialogOpen(true)}>New project</Button> : null}
+      />
 
       {projects.isPending ? <Loading label="Loading projects" /> : null}
       {projects.isError ? <ErrorState error={projects.error} /> : null}
@@ -149,23 +149,23 @@ export const ProjectsPage = () => {
             <div className="flex items-start justify-between gap-2">
               <Link
                 to={`/projects/${project.id}`}
-                className="text-sm font-semibold text-slate-900 hover:text-indigo-700"
+                className="text-sm font-semibold text-ink hover:text-accent"
               >
                 {project.name}
               </Link>
               <ProjectStatusBadge status={project.status} />
             </div>
 
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted">
               {project.client.name} · {project.client.company}
             </p>
-            <p className="mt-2 line-clamp-2 text-xs text-slate-600">{project.description}</p>
+            <p className="mt-2 line-clamp-2 text-xs text-muted">{project.description}</p>
 
-            <div className="mt-3 grid grid-cols-4 gap-2 border-t border-slate-100 pt-3">
+            <div className="mt-3 grid grid-cols-4 gap-2 border-t border-line pt-3">
               {STATUS_ORDER.map((status) => (
                 <div key={status}>
-                  <p className="text-[11px] text-slate-500">{STATUS_LABELS[status]}</p>
-                  <p className="text-sm font-semibold text-slate-900 tabular-nums">
+                  <p className="text-[11px] text-muted">{STATUS_LABELS[status]}</p>
+                  <p className="text-sm font-semibold text-ink tabular-nums">
                     {project.taskCounts[status]}
                   </p>
                 </div>
@@ -173,16 +173,16 @@ export const ProjectsPage = () => {
             </div>
 
             <div className="mt-3 flex items-center justify-between text-xs">
-              <span className="text-slate-500">Manager: {project.manager.name}</span>
+              <span className="text-muted">Manager: {project.manager.name}</span>
               {project.overdueCount > 0 ? (
                 <Link
                   to={`/tasks?projectId=${project.id}&overdue=true`}
-                  className="font-medium text-rose-600 hover:underline"
+                  className="font-medium text-danger hover:underline"
                 >
                   {project.overdueCount} overdue
                 </Link>
               ) : (
-                <span className="text-slate-400">On track</span>
+                <span className="text-subtle">On track</span>
               )}
             </div>
           </Card>

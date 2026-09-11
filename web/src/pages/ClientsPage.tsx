@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useClients, useCreateClient, useDeleteClient } from '../hooks/queries';
+import { PageHeader } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { EmptyState, ErrorState, FormError, Loading } from '../components/ui/Feedback';
@@ -33,13 +34,12 @@ export const ClientsPage = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Clients</h1>
-          <p className="text-sm text-slate-500">Projects are always assigned to a client</p>
-        </div>
-        <Button onClick={() => setOpen(true)}>Add client</Button>
-      </div>
+      <PageHeader
+        title="Clients"
+        description="Every project belongs to a client, so a client cannot be removed while it still has projects"
+        breadcrumbs={[{ label: 'Home', to: '/dashboard' }, { label: 'Clients' }]}
+        actions={<Button onClick={() => setOpen(true)}>Add client</Button>}
+      />
 
       {clients.isPending ? <Loading label="Loading clients" /> : null}
       {clients.isError ? <ErrorState error={clients.error} /> : null}
@@ -50,20 +50,20 @@ export const ClientsPage = () => {
           {clients.data.items.length === 0 ? (
             <EmptyState title="No clients yet" />
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-line">
               {clients.data.items.map((client) => (
                 <li key={client.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-900">{client.name}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-medium text-ink">{client.name}</p>
+                    <p className="text-xs text-muted">
                       {client.company} · {client.contactEmail}
                     </p>
                   </div>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted">
                     {client._count?.projects ?? 0} project
                     {(client._count?.projects ?? 0) === 1 ? '' : 's'}
                   </span>
-                  <span className="hidden text-xs text-slate-400 sm:block">
+                  <span className="hidden text-xs text-subtle sm:block">
                     added {formatDate(client.createdAt)}
                   </span>
                   <Button
