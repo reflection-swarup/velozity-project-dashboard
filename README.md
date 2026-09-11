@@ -11,8 +11,13 @@ Socket.io · node-cron · Zod · Tailwind CSS · Docker
 |---|---|
 | Repository | https://github.com/reflection-swarup/velozity-project-dashboard |
 | CI | ![CI](https://github.com/reflection-swarup/velozity-project-dashboard/actions/workflows/ci.yml/badge.svg) |
-| Live application | _add the Vercel URL here once deployed — see [Deployment](#deployment)_ |
+| Live application | **https://velozity-dashboard-ebon.vercel.app** |
+| API | https://velozity-api-890n.onrender.com |
 | Demo password | `Password123!` for every seeded account |
+
+> **First load may take up to a minute.** The API runs on a free Render instance that sleeps after
+> 15 minutes of inactivity, so the first request wakes it. Everything is instant after that.
+
 
 ---
 
@@ -965,12 +970,17 @@ what runs in production is what was tested.
 ### 1. Pick the two names first
 
 The API needs to know the web origin and the web client needs to know the API origin, so decide
-both before starting:
+both before starting. Note that both hosts append a suffix when a name is already taken, which is
+what happened here — so check the real URLs after each service is created and correct
+`CORS_ORIGIN`, `PUBLIC_API_URL` and `VITE_API_URL` to match:
 
 ```
-API on Render   https://velozity-api.onrender.com
-Web on Vercel   https://velozity-dashboard.vercel.app
+API on Render   https://velozity-api-890n.onrender.com
+Web on Vercel   https://velozity-dashboard-ebon.vercel.app
 ```
+
+A mismatched `CORS_ORIGIN` is the one that bites: the API stays healthy and the browser simply
+reports `Failed to fetch`, because it blocks the response before any application code runs.
 
 ### 2. Database on Neon
 
