@@ -353,7 +353,9 @@ const run = async () => {
     presenceEvent,
   );
 
-  const raviProjectId = raviProjects.body.items[0].id;
+  const raviProjectId = raviProjects.body.items.find((project) =>
+    karanTasks.body.items.some((task) => task.project.id === project.id),
+  ).id;
   const subscribeOk = await new Promise((resolve) => raviSocket.emit('project:subscribe', raviProjectId, resolve));
   check('pm can subscribe to their own project room', subscribeOk === true);
 

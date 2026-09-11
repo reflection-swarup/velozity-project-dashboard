@@ -43,7 +43,7 @@ export const list = async (
   const projects = await prisma.project.findMany({
     where,
     include: projectInclude,
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
   });
 
   const projectIds = projects.map((project) => project.id);

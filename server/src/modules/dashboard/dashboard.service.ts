@@ -78,7 +78,7 @@ const managerDashboard = async (user: AuthUser) => {
     prisma.project.findMany({
       where: { managerId: user.id },
       include: { client: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     }),
     statusCounts(scope),
     priorityCounts(scope),

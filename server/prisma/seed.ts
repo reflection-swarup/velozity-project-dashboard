@@ -21,16 +21,12 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   DONE: 'Done',
 };
 
-const reset = async () => {
-  await prisma.activityLog.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.task.deleteMany();
-  await prisma.projectMember.deleteMany();
-  await prisma.project.deleteMany();
-  await prisma.client.deleteMany();
-  await prisma.refreshToken.deleteMany();
-  await prisma.user.deleteMany();
-};
+// Truncate rather than delete so the task number sequence restarts and a
+// fresh seed always begins at Task #1.
+const reset = () =>
+  prisma.$executeRawUnsafe(
+    'TRUNCATE TABLE activity_logs, notifications, tasks, project_members, projects, clients, refresh_tokens, users RESTART IDENTITY CASCADE',
+  );
 
 const main = async () => {
   await reset();
