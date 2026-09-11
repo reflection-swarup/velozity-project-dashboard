@@ -18,11 +18,11 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
-COPY --from=builder /app/node_modules ./node_modules
+RUN npm ci --omit=dev && npm cache clean --force
+COPY prisma ./prisma
+RUN npx prisma generate
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-COPY docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh && chown -R node:node /app
+COPY --chmod=755 docker-entrypoint.sh ./
 USER node
 EXPOSE 4000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=5 \
