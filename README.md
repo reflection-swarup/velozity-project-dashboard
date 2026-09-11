@@ -254,6 +254,22 @@ it is safe to repeat.
 | 8 | Create a task already past its due date | not flagged by the API; existing overdue rows carry a timestamp |
 | 9 | Inspect the refresh cookie, rotate it, then replay the old one | `HttpOnly`, path scoped, absent from the body, rotation works, replay `401` |
 
+### Demonstrating it by hand
+
+`npm run demo <action>` drives the app through the real HTTP API, so each action writes the same
+activity row and emits the same WebSocket event a real user would.
+
+| Action | What it does |
+|---|---|
+| `overdue` | Creates two tasks already past their due date, unflagged. The next sweep flags them, posts to the feed as System and notifies the assignees. |
+| `assign` | Ravi creates a task and assigns it to Karan — activity plus an assignment notification. |
+| `review` | Karan moves one of his tasks to In Review — activity plus a notification for Ravi. |
+| `status` | Walks one task To Do → In Progress → In Review, 1.5s apart, so three feed rows arrive separately. |
+| `state` | Prints what is currently flagged overdue and the newest feed rows. |
+
+The sweep runs every five minutes by default. While demonstrating it, set `OVERDUE_CRON=* * * * *`
+in the root `.env` and restart the API so a planted task is picked up within a minute.
+
 ### The scheduled job
 
 Raising the overdue flag belongs to the sweep alone. Creating a task with a past due date leaves

@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "smoke": "node scripts/smoke.mjs",
     "verify:overdue": "tsx scripts/verify-overdue.ts",
-    "attack": "node scripts/attack.mjs"
+    "attack": "node scripts/attack.mjs",
+    "demo": "node scripts/demo.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
