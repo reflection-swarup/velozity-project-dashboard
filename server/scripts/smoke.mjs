@@ -534,6 +534,9 @@ const run = async () => {
   check('unread count updates over the socket', counted?.unreadCount === 0, counted);
 
   section('background job');
+  const overdueSeeded = (await req('/api/tasks?overdue=true', { token: admin.token })).body.items[0];
+  check('the seed leaves tasks in an overdue state', Boolean(overdueSeeded), overdueSeeded?.number);
+
   const pastDue = await req('/api/tasks', {
     token: ravi.token,
     method: 'POST',
@@ -546,7 +549,35 @@ const run = async () => {
       dueDate: new Date(Date.now() - 864e5).toISOString(),
     },
   });
-  check('a task created past its due date is flagged immediately', pastDue.body.task?.isOverdue === true, pastDue.body);
+  check(
+    'a task created past its due date is NOT flagged by the api',
+    pastDue.status === 201 && pastDue.body.task?.isOverdue === false,
+    pastDue.body.task,
+  );
+
+  const sweptFlag = await req('/api/tasks?limit=100&overdue=true', { token: admin.token });
+  check(
+    'only the scheduler raises the overdue flag',
+    sweptFlag.body.items.every((task) => task.id !== pastDue.body.task.id),
+    sweptFlag.body.total,
+  );
+
+  const clearedByDueDate = await req(`/api/tasks/${overdueSeeded.id}`, {
+    token: admin.token,
+    method: 'PATCH',
+    body: { dueDate: new Date(Date.now() + 7 * 864e5).toISOString() },
+  });
+  check(
+    'pushing the due date out clears an existing overdue flag',
+    clearedByDueDate.body.task?.isOverdue === false,
+    clearedByDueDate.body.task,
+  );
+
+  await req(`/api/tasks/${overdueSeeded.id}`, {
+    token: admin.token,
+    method: 'PATCH',
+    body: { dueDate: overdueSeeded.dueDate },
+  });
 
   adminSocket.close();
   karanSocket.close();

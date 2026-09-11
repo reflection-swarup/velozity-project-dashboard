@@ -133,7 +133,7 @@ hers.
 ```bash
 cd server
 npm run typecheck        # tsc --noEmit, strict
-npm run smoke            # 81 checks against a running API + WebSocket
+npm run smoke            # 84 checks against a running API + WebSocket
 npm run verify:overdue   # 5 checks on the scheduled job itself
 
 cd ../web
@@ -213,6 +213,11 @@ details; unknown routes return a structured `404`; no response contains a stack 
 this week, developer tasks sorted by priority then due date.
 
 ### The scheduled job
+
+Raising the overdue flag belongs to the sweep alone. Creating a task with a past due date leaves
+`isOverdue = false` until the next run, and an edit can only ever *clear* the flag — which is what
+pushing the due date out or finishing the work should do straight away. That keeps the
+responsibility in one place rather than split between the API and the scheduler.
 
 `npm run verify:overdue` inserts a past-due task, runs the sweep directly, and asserts it flags
 the task, persists `isOverdue` + `overdueAt`, writes exactly one activity row, notifies the

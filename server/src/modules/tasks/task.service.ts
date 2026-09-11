@@ -178,7 +178,6 @@ export const create = async (
   if (input.assigneeId) await assertAssignableDeveloper(input.assigneeId);
 
   const now = new Date();
-  const overdue = Boolean(input.dueDate && input.dueDate < now && input.status !== 'DONE');
 
   const result = await prisma.$transaction(async (tx) => {
     const task = await tx.task.create({
@@ -191,8 +190,10 @@ export const create = async (
         dueDate: input.dueDate ?? null,
         assigneeId: input.assigneeId ?? null,
         createdById: user.id,
-        isOverdue: overdue,
-        overdueAt: overdue ? now : null,
+        // Overdue is raised by the scheduled sweep and nowhere else, so a task
+        // created past its due date stays unflagged until the next run.
+        isOverdue: false,
+        overdueAt: null,
         completedAt: input.status === 'DONE' ? now : null,
       },
       include: taskInclude,
@@ -285,7 +286,11 @@ export const update = async (user: AuthUser, id: string, input: UpdateInput) => 
     input.assigneeId !== undefined && (input.assigneeId ?? null) !== task.assigneeId;
   const nextStatus = input.status ?? task.status;
   const nextDueDate = input.dueDate !== undefined ? input.dueDate : task.dueDate;
-  const overdue = Boolean(nextDueDate && nextDueDate < now && nextStatus !== 'DONE');
+
+  // The sweep owns raising this flag. An edit can only clear it, which is what
+  // pushing the due date out or finishing the work should do immediately.
+  const stillOverdue =
+    task.isOverdue && nextStatus !== 'DONE' && Boolean(nextDueDate && nextDueDate < now);
 
   const result = await prisma.$transaction(async (tx) => {
     const updated = await tx.task.update({
@@ -297,8 +302,8 @@ export const update = async (user: AuthUser, id: string, input: UpdateInput) => 
         ...(input.status !== undefined ? { status: input.status } : {}),
         ...(input.dueDate !== undefined ? { dueDate: input.dueDate } : {}),
         ...(input.assigneeId !== undefined ? { assigneeId: input.assigneeId } : {}),
-        isOverdue: overdue,
-        overdueAt: overdue ? (task.overdueAt ?? now) : null,
+        isOverdue: stillOverdue,
+        overdueAt: stillOverdue ? task.overdueAt : null,
         completedAt: nextStatus === 'DONE' ? (task.completedAt ?? now) : null,
       },
       include: taskInclude,
