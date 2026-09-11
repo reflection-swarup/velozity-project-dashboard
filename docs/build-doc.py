@@ -154,7 +154,7 @@ def build():
 
   <div class="callout">
     <strong>Try it in two clicks.</strong> Open the live application and use any account from the
-    table on page 3 — the password is <code>Password123!</code> for all of them. The sign-in page
+    table in section 3 — the password is <code>Password123!</code> for all of them. The sign-in page
     also lists three of them; clicking one fills the form in.
   </div>
 
@@ -319,7 +319,7 @@ def build():
   tabs in the same browser share a session. Sign in as <code>karan@velozity.test</code> in one and
   <code>admin@velozity.test</code> in the other, then change a task's status as Karan. The admin's
   feed gains the row immediately, with no refresh. Add a third window as
-  <code>sana@velozity.test</code> and she receives nothing — the task is not hers.</p>
+  <code>sana@velozity.test</code> and they receive nothing — the task is not theirs.</p>
 </section>
 
 <!-- ======================= WALKTHROUGH: LANDING ======================= -->
@@ -415,7 +415,7 @@ def build():
   <h2>7 · The Project Manager workspace</h2>
   <p class="section-intro">The same application, narrowed to the projects this person owns.</p>
 
-  {figure('10-pm-overview', 'Ravi&#8217;s dashboard. Two projects, eleven tasks, and work due in the next seven days — all limited to projects he manages.')}
+  {figure('10-pm-overview', 'Ravi&#8217;s dashboard. Two projects, eleven tasks, and work due in the next seven days — all limited to the projects they manage.')}
 
   <p>Compare this with the admin overview: the layout is the same, the numbers are not. Ravi sees
   <strong>2 projects and 11 tasks</strong> where the admin saw <strong>4 and 21</strong>. That
@@ -454,7 +454,7 @@ def build():
 
   <p>The sidebar reads <strong>My Tasks</strong> rather than Tasks, and the Clients and Team
   sections are absent — but that is presentation. Typing <code>/users</code> into the address bar
-  gets him nothing, because the API refuses it regardless of what the interface shows.</p>
+  gets nothing back, because the API refuses it regardless of what the interface shows.</p>
 
   {figure('14-developer-tasks', 'The same task list a manager sees, returning six tasks instead of twenty-one. Every one is assigned to Karan.')}
 
