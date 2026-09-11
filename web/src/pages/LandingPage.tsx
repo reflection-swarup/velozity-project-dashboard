@@ -99,7 +99,7 @@ const STACK = [
 const REPO_URL = 'https://github.com/reflection-swarup/velozity-project-dashboard';
 
 export const LandingPage = () => {
-  const { status, login } = useAuth();
+  const { status, user, login, logout } = useAuth();
   const { resolved, toggle } = useTheme();
   const navigate = useNavigate();
 
@@ -145,9 +145,23 @@ export const LandingPage = () => {
             >
               {resolved === 'dark' ? <IconSun className="size-5" /> : <IconMoon className="size-5" />}
             </button>
-            <Link to={status === 'authenticated' ? '/dashboard' : '/login'}>
-              <Button size="sm">{status === 'authenticated' ? 'Open dashboard' : 'Sign in'}</Button>
-            </Link>
+            {status === 'authenticated' && user ? (
+              <>
+                <span className="hidden text-[13px] text-muted lg:inline">
+                  Signed in as <span className="font-semibold text-ink">{user.name}</span>
+                </span>
+                <Link to="/dashboard">
+                  <Button size="sm">Open dashboard</Button>
+                </Link>
+                <Button size="sm" variant="ghost" onClick={() => void logout()}>
+                  Sign out
+                </Button>
+              </>
+            ) : (
+              <Link to="/login">
+                <Button size="sm">Sign in</Button>
+              </Link>
+            )}
           </nav>
         </div>
       </header>
@@ -171,7 +185,7 @@ export const LandingPage = () => {
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link to={status === 'authenticated' ? '/dashboard' : '/login'}>
               <Button>
-                Open the dashboard
+                {status === 'authenticated' ? 'Open the dashboard' : 'Sign in to the dashboard'}
                 <IconArrowRight className="size-4" />
               </Button>
             </Link>
@@ -181,7 +195,8 @@ export const LandingPage = () => {
           </div>
 
           <p className="mt-4 text-[13px] text-subtle">
-            Or jump straight in as any of the three roles below.
+            Accounts are created by an administrator, so there is no public sign-up. Continue as
+            any of the three roles below to look around.
           </p>
         </div>
 
@@ -202,7 +217,8 @@ export const LandingPage = () => {
           </h2>
           <p className="mt-2.5 max-w-2xl text-md text-muted">
             The same endpoints return different data for each role, and refuse outright when they
-            should. Continue as any of them to see where the boundaries sit.
+            should. Continue as any of them to see where the boundaries sit — an administrator
+            creates real accounts from the Team page.
           </p>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-3">
