@@ -1,8 +1,10 @@
 import type { Prisma, Role, User } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { logger } from '../../lib/logger';
 import { conflict, notFound } from '../../lib/errors';
 import { hashPassword } from '../auth/auth.service';
 import { presence } from '../../realtime/presence';
+import { disconnectUser } from '../../realtime/emit';
 
 const publicFields = {
   id: true,
@@ -72,11 +74,22 @@ export const update = async (
 
   const user = await prisma.user.update({ where: { id }, data: input, select: publicFields });
 
-  if (input.isActive === false || (input.role && input.role !== existing.role)) {
+  const roleChanged = Boolean(input.role && input.role !== existing.role);
+  const deactivated = input.isActive === false;
+
+  // HTTP requests re-read the role every time, but an open socket was
+  // authorised once at handshake. Revoke the refresh tokens and drop the
+  // sockets together so neither channel keeps stale permissions.
+  if (deactivated || roleChanged) {
     await prisma.refreshToken.updateMany({
       where: { userId: id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+
+    const dropped = disconnectUser(id, deactivated ? 'account deactivated' : 'role changed');
+    if (dropped > 0) {
+      logger.info({ userId: id, dropped, roleChanged, deactivated }, 'revoked live sessions');
+    }
   }
 
   return withPresence(user);

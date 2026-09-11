@@ -64,6 +64,26 @@ export const emitUnreadCount = (userId: string, unreadCount: number) => {
   io?.to(rooms.user(userId)).emit('notification:count', { unreadCount });
 };
 
+// A socket is authorised when it connects, so a role change or a deactivation
+// has to reach the sockets that are already open. Disconnecting them forces a
+// fresh handshake, which re-reads the role from the database.
+export const disconnectUser = (userId: string, reason: string) => {
+  if (!io) return 0;
+
+  const sockets = io.sockets.adapter.rooms.get(rooms.user(userId));
+  if (!sockets) return 0;
+
+  const ids = [...sockets];
+  for (const id of ids) {
+    const socket = io.sockets.sockets.get(id);
+    if (!socket) continue;
+    socket.emit('session:revoked', { reason });
+    socket.disconnect(true);
+  }
+
+  return ids.length;
+};
+
 export const emitPresence = () => {
   io?.to(rooms.global).emit('presence:update', {
     onlineCount: presence.count(),

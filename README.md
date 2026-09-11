@@ -133,8 +133,8 @@ hers.
 ```bash
 cd server
 npm run typecheck        # tsc --noEmit, strict
-npm run smoke            # 84 checks against a running API + WebSocket
-npm run verify:overdue   # 5 checks on the scheduled job itself
+npm run smoke            # 90 checks against a running API + WebSocket
+npm run verify:overdue   # 7 checks on the scheduled job itself
 
 cd ../web
 npm run typecheck        # strict, noUncheckedIndexedAccess, noUnusedLocals
@@ -193,6 +193,8 @@ full smoke suite against it), and **docker** (both images build).
 | PM gets a live notification when a task hits In Review | `notification:new` |
 | Assigned developer gets a live assignment notification | `notification:new` |
 | Unread count updates over the socket, never by polling | `notification:count` |
+| Deactivating a user drops their open socket and tells it why | `session:revoked`, then disconnect |
+| A deactivated user cannot reuse an unexpired access token, over HTTP or a new socket | `401` / handshake refused |
 
 **Token handling**
 
@@ -221,7 +223,8 @@ responsibility in one place rather than split between the API and the scheduler.
 
 `npm run verify:overdue` inserts a past-due task, runs the sweep directly, and asserts it flags
 the task, persists `isOverdue` + `overdueAt`, writes exactly one activity row, notifies the
-assignee, and that **a second sweep is a no-op** (idempotent).
+assignee, that **a second sweep is a no-op** (idempotent), that a future due date is never
+re-flagged, and that the flag stays raised until an edit clears it.
 
 The job was also verified end to end inside the container by inserting a past-due row straight
 into Postgres — no API involved — and waiting for the cron to pick it up on its own:
@@ -787,6 +790,11 @@ origin, and both must be set or the session silently fails to restore on reload.
 - **The overdue sweep assumes a single API instance.** It is idempotent, so correctness holds
   under concurrent runs, but on multiple instances every instance would do the same work. A Redis
   lock via Bull, or a Postgres advisory lock, is the fix.
+- **Socket authorisation is revalidated on change, not continuously.** A socket is authorised at
+  handshake; a role change or deactivation revokes the refresh tokens *and* disconnects that
+  user's open sockets, forcing a fresh handshake that re-reads the role. Between those events the
+  socket is not re-checked, so a production system would also want a short-lived socket session
+  that must be renewed.
 - **Presence is in-process.** The `userId → sockets` map lives in memory, so behind two instances
   the online count would only reflect one of them. The fix is the Socket.io Redis adapter, which
   also makes the room fan-out work across instances.

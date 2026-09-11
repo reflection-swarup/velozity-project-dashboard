@@ -533,6 +533,62 @@ const run = async () => {
   const counted = await countEvent;
   check('unread count updates over the socket', counted?.unreadCount === 0, counted);
 
+  section('live session revocation');
+  // A throwaway account, so the seeded users keep their roles for repeat runs.
+  const temp = await req('/api/users', {
+    token: admin.token,
+    method: 'POST',
+    body: {
+      name: 'Temp Socket User',
+      email: `temp-socket-${Date.now()}@velozity.test`,
+      password: 'Password123!',
+      role: 'DEVELOPER',
+    },
+  });
+  check('admin can create a throwaway developer', temp.status === 201, temp.body);
+
+  const tempLogin = await req('/api/auth/login', {
+    method: 'POST',
+    body: { email: temp.body.user.email, password: 'Password123!' },
+  });
+  const tempSocket = await connect(tempLogin.body.accessToken);
+  check('the throwaway account holds an open socket', tempSocket.connected);
+
+  const revoked = waitFor(tempSocket, 'session:revoked', undefined, 5000);
+  const dropped = new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), 5000);
+    tempSocket.once('disconnect', () => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
+
+  await req(`/api/users/${temp.body.user.id}`, {
+    token: admin.token,
+    method: 'PATCH',
+    body: { isActive: false },
+  });
+
+  const [revokeEvent, wasDropped] = await Promise.all([revoked, dropped]);
+  check('deactivating a user tells their open socket why', Boolean(revokeEvent), revokeEvent);
+  check('deactivating a user drops their open socket', wasDropped === true);
+  check('the dropped socket is really closed', tempSocket.connected === false);
+
+  const afterRevoke = await req('/api/tasks', { token: tempLogin.body.accessToken });
+  check(
+    'a deactivated user cannot use their still-unexpired access token',
+    afterRevoke.status === 401,
+    afterRevoke.status,
+  );
+
+  let reconnectRefused = false;
+  try {
+    await connect(tempLogin.body.accessToken);
+  } catch {
+    reconnectRefused = true;
+  }
+  check('a deactivated user cannot open a new socket either', reconnectRefused);
+
   section('background job');
   const overdueSeeded = (await req('/api/tasks?overdue=true', { token: admin.token })).body.items[0];
   check('the seed leaves tasks in an overdue state', Boolean(overdueSeeded), overdueSeeded?.number);
@@ -562,22 +618,6 @@ const run = async () => {
     sweptFlag.body.total,
   );
 
-  const clearedByDueDate = await req(`/api/tasks/${overdueSeeded.id}`, {
-    token: admin.token,
-    method: 'PATCH',
-    body: { dueDate: new Date(Date.now() + 7 * 864e5).toISOString() },
-  });
-  check(
-    'pushing the due date out clears an existing overdue flag',
-    clearedByDueDate.body.task?.isOverdue === false,
-    clearedByDueDate.body.task,
-  );
-
-  await req(`/api/tasks/${overdueSeeded.id}`, {
-    token: admin.token,
-    method: 'PATCH',
-    body: { dueDate: overdueSeeded.dueDate },
-  });
 
   adminSocket.close();
   karanSocket.close();
