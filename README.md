@@ -714,11 +714,50 @@ missing or too-short secret.
 | `OVERDUE_CRON` | `*/5 * * * *` | validated before the scheduler starts |
 | `SEED_ON_START` | `false` | the Docker API sets this to `true` |
 
+| `PUBLIC_API_URL` | — | the API's own public URL; set in production so the API can tell it is deployed cross-site |
+
 ### `web/.env`
 
 | Variable | Default |
 |---|---|
 | `VITE_API_URL` | `http://localhost:4000` |
+
+### Which file goes where
+
+```
+.env             JWT secrets, read by docker compose only
+server/.env      the API: database url, secrets, cookie and CORS settings
+web/.env         the web client: VITE_API_URL
+```
+
+Copy each one from the `.env.example` sitting beside it. The Postgres credentials in
+`docker-compose.yml` (`velozity` / `velozity`) are **local development values, committed on
+purpose** — they are not secrets, and nothing reads them in production, where the API takes a
+single `DATABASE_URL` from its environment.
+
+### Cookies in production
+
+A cross-site deployment (web on Vercel, API on a WebSocket-capable host) needs all four of these
+together:
+
+```
+CORS_ORIGIN=https://<your-web-domain>
+PUBLIC_API_URL=https://<your-api-domain>
+COOKIE_SECURE=true
+COOKIE_SAMESITE=none
+```
+
+Getting this wrong produces the confusing failure where login succeeds and then a page reload
+logs the user straight back out, because the browser silently refuses to store or send the
+refresh cookie. So the API **validates the combination at boot and refuses to start** rather than
+serving a session that cannot survive a refresh:
+
+| Misconfiguration | Result |
+|---|---|
+| `COOKIE_SAMESITE=none` with `COOKIE_SECURE=false` | refuses to start — browsers drop the cookie |
+| `NODE_ENV=production` with `COOKIE_SECURE=false` | refuses to start |
+| `NODE_ENV=production` with a non-https `CORS_ORIGIN` | refuses to start |
+| Web origin differs from `PUBLIC_API_URL` but `COOKIE_SAMESITE=lax` | refuses to start — the cookie would never be sent |
 
 ---
 
