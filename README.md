@@ -251,8 +251,14 @@ this week, developer tasks sorted by priority then due date.
 ### The adversarial checklist
 
 `npm run attack` is a separate script that attacks the API from the outside rather than
-exercising happy paths, and is what I run before deploying. It restores everything it touches, so
-it is safe to repeat.
+exercising happy paths, and is what I run before deploying. It restores every record it changes,
+so it is safe to repeat.
+
+It does leave a trail in the activity feed, though, and that is not a defect: the log is
+append-only, so restoring a task's status writes a second event rather than erasing the first.
+Point it at a deployed demo with `ATTACK_BASE=https://your-api npm run attack` and the feed will
+show its work afterwards — re-seed (`DATABASE_URL=<target> npm run seed`) when you want the demo
+data pristine again.
 
 | | Attack | Result |
 |---|---|---|

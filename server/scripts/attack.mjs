@@ -2,6 +2,12 @@
  * Adversarial pre-deployment checklist, written to attack the API from the
  * outside rather than to exercise the happy paths the smoke suite covers.
  * Run against a seeded, running API: node scripts/attack.mjs
+ *
+ * It restores every record it changes, but the activity log is append-only by
+ * design, so the events it generates stay in the feed. Re-seed afterwards if
+ * you run this against an environment somebody is going to look at:
+ *
+ *   DATABASE_URL=<target> npm run seed
  */
 import { io } from 'socket.io-client';
 
