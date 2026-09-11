@@ -122,7 +122,7 @@ const UserMenu = () => {
               <p className="truncate text-xs text-muted">{user.email}</p>
             </div>
           </div>
-          <p className="mt-3 rounded-lg bg-raised px-3 py-2 text-[13px] font-medium text-muted">
+          <p className="mt-3 rounded-lg bg-raised px-3 py-2 text-md font-semibold text-ink">
             Signed in as {ROLE_LABELS[user.role]}
           </p>
           <Button variant="secondary" size="sm" className="mt-3 w-full" onClick={() => void logout()}>
