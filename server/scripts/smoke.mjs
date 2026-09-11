@@ -161,6 +161,41 @@ const run = async () => {
   });
   check('pm cannot edit another pm project', crossPmEdit.status === 403, crossPmEdit.body);
 
+  const ownProject = raviProjects.body.items[0];
+  const hold = await req(`/api/projects/${ownProject.id}`, {
+    token: ravi.token,
+    method: 'PATCH',
+    body: { status: 'ON_HOLD' },
+  });
+  check('pm can put their own project on hold', hold.body.project?.status === 'ON_HOLD', hold.body);
+
+  const complete = await req(`/api/projects/${ownProject.id}`, {
+    token: ravi.token,
+    method: 'PATCH',
+    body: { status: 'COMPLETED' },
+  });
+  check('pm can mark their own project completed', complete.body.project?.status === 'COMPLETED');
+
+  await req(`/api/projects/${ownProject.id}`, {
+    token: ravi.token,
+    method: 'PATCH',
+    body: { status: ownProject.status },
+  });
+
+  const crossStatus = await req(`/api/projects/${nehaProject.id}`, {
+    token: ravi.token,
+    method: 'PATCH',
+    body: { status: 'ON_HOLD' },
+  });
+  check('pm cannot change another pm project status', crossStatus.status === 403, crossStatus.status);
+
+  const devStatus = await req(`/api/projects/${ownProject.id}`, {
+    token: karan.token,
+    method: 'PATCH',
+    body: { status: 'ON_HOLD' },
+  });
+  check('developer cannot change a project status', devStatus.status === 403, devStatus.status);
+
   const devUsers = await req('/api/users', { token: karan.token });
   check('developer cannot list users', devUsers.status === 403, devUsers.body);
 

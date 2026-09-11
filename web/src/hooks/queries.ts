@@ -22,6 +22,7 @@ import type {
   Notification,
   Paginated,
   Project,
+  ProjectStatus,
   Role,
   Task,
   TaskPriority,
@@ -194,11 +195,21 @@ export const useCreateProject = () => {
 export const useUpdateProject = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: string; name?: string; description?: string; status?: string }) =>
-      api.patch<{ project: Project }>(`/api/projects/${id}`, input),
+    mutationFn: ({
+      id,
+      ...input
+    }: {
+      id: string;
+      name?: string;
+      description?: string;
+      clientId?: string;
+      managerId?: string;
+      status?: ProjectStatus;
+    }) => api.patch<{ project: Project }>(`/api/projects/${id}`, input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all });
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.current });
     },
   });
 };

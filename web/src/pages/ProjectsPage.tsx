@@ -1,114 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import { useClients, useCreateProject, useProjects, useUsers } from '../hooks/queries';
+import { useProjects } from '../hooks/queries';
+import { ProjectDialog } from '../components/ProjectDialog';
+import { EmptyState, ErrorState, Loading } from '../components/ui/Feedback';
 import { PageHeader } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ProjectStatusBadge } from '../components/ui/Badge';
-import { EmptyState, ErrorState, FormError, Loading } from '../components/ui/Feedback';
-import { Field, Input, Select, Textarea } from '../components/ui/Field';
-import { Modal } from '../components/ui/Modal';
 import { STATUS_LABELS, STATUS_ORDER } from '../lib/format';
-
-const NewProjectDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
-  const { hasRole } = useAuth();
-  const clients = useClients();
-  const managers = useUsers('PROJECT_MANAGER');
-  const createProject = useCreateProject();
-  const [form, setForm] = useState({ name: '', description: '', clientId: '', managerId: '' });
-
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    createProject.mutate(
-      {
-        name: form.name.trim(),
-        description: form.description.trim(),
-        clientId: form.clientId,
-        ...(form.managerId ? { managerId: form.managerId } : {}),
-      },
-      {
-        onSuccess: () => {
-          setForm({ name: '', description: '', clientId: '', managerId: '' });
-          onClose();
-        },
-      },
-    );
-  };
-
-  return (
-    <Modal
-      open={open}
-      title="New project"
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" type="button" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" form="project-form" disabled={createProject.isPending}>
-            {createProject.isPending ? 'Creating' : 'Create project'}
-          </Button>
-        </>
-      }
-    >
-      <form id="project-form" onSubmit={submit} className="space-y-3">
-        <FormError error={createProject.error} />
-
-        <Field label="Name" htmlFor="project-name">
-          <Input
-            id="project-name"
-            required
-            minLength={3}
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-          />
-        </Field>
-
-        <Field label="Description" htmlFor="project-description">
-          <Textarea
-            id="project-description"
-            value={form.description}
-            onChange={(event) => setForm({ ...form, description: event.target.value })}
-          />
-        </Field>
-
-        <Field label="Client" htmlFor="project-client">
-          <Select
-            id="project-client"
-            required
-            value={form.clientId}
-            onChange={(event) => setForm({ ...form, clientId: event.target.value })}
-          >
-            <option value="">Select a client</option>
-            {(clients.data?.items ?? []).map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name} · {client.company}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
-        {hasRole('ADMIN') ? (
-          <Field label="Project manager" htmlFor="project-manager">
-            <Select
-              id="project-manager"
-              value={form.managerId}
-              onChange={(event) => setForm({ ...form, managerId: event.target.value })}
-            >
-              <option value="">Assign to me</option>
-              {(managers.data?.items ?? []).map((manager) => (
-                <option key={manager.id} value={manager.id}>
-                  {manager.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        ) : null}
-      </form>
-    </Modal>
-  );
-};
 
 export const ProjectsPage = () => {
   const { hasRole, user } = useAuth();
@@ -189,7 +89,7 @@ export const ProjectsPage = () => {
         ))}
       </div>
 
-      <NewProjectDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <ProjectDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </div>
   );
 };

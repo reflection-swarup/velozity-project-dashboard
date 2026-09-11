@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import clsx from 'clsx';
 import { useAuth } from '../../auth/AuthProvider';
 import { useNotifications, useProjects, useTasks } from '../../hooks/queries';
-import { ROLE_LABELS } from '../../lib/format';
+import { PROJECT_STATUS_LABELS, ROLE_LABELS } from '../../lib/format';
 import { CountBadge } from '../ui/Badge';
 import { Logo } from '../ui/Logo';
 import {
@@ -14,7 +14,7 @@ import {
   IconHome,
   IconUsers,
 } from '../ui/Icon';
-import type { Role } from '../../types';
+import type { ProjectStatus, Role } from '../../types';
 
 type Item = {
   to: string;
@@ -23,6 +23,14 @@ type Item = {
   roles: Role[];
   badge?: number;
   badgeTone?: 'accent' | 'danger';
+};
+
+// The dot carries the project status and nothing else. Overdue work gets its
+// own count badge, so one indicator never has to mean two different things.
+const STATUS_DOT: Record<ProjectStatus, string> = {
+  ACTIVE: 'bg-success',
+  ON_HOLD: 'bg-warn',
+  COMPLETED: 'bg-line-strong',
 };
 
 // Each role gets its own tint, so with several windows open side by side it is
@@ -156,16 +164,18 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
                   onClick={onNavigate}
                 >
                   <span
-                    className={clsx(
-                      'ml-1 size-2.5 shrink-0 rounded-full',
-                      project.overdueCount > 0
-                        ? 'bg-danger'
-                        : project.status === 'ACTIVE'
-                          ? 'bg-success'
-                          : 'bg-line-strong',
-                    )}
+                    className={clsx('ml-1 size-2.5 shrink-0 rounded-full', STATUS_DOT[project.status])}
+                    title={`${PROJECT_STATUS_LABELS[project.status]} project`}
                   />
-                  <span className="truncate">{project.name}</span>
+                  <span className="flex-1 truncate">{project.name}</span>
+                  {project.overdueCount > 0 ? (
+                    <span
+                      className="inline-flex min-w-5 items-center justify-center rounded-md bg-danger-soft px-1.5 py-0.5 text-xs font-bold text-danger tabular-nums"
+                      title={`${project.overdueCount} overdue task${project.overdueCount === 1 ? '' : 's'}`}
+                    >
+                      {project.overdueCount}
+                    </span>
+                  ) : null}
                 </NavLink>
               ))}
             </div>

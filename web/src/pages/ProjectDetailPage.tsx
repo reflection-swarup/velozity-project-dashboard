@@ -4,16 +4,20 @@ import clsx from 'clsx';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { TaskBoard } from '../components/TaskList';
 import { TaskDialog } from '../components/TaskDialog';
+import { ProjectDialog } from '../components/ProjectDialog';
 import { PageHeader, Section } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader } from '../components/ui/Card';
+import { Select } from '../components/ui/Field';
 import { ProjectStatusBadge } from '../components/ui/Badge';
 import { Avatar, AvatarStack } from '../components/ui/Avatar';
 import { CardSkeleton, EmptyState, ErrorState, ListSkeleton } from '../components/ui/Feedback';
-import { useProject, useTasks } from '../hooks/queries';
+import { useProject, useTasks, useUpdateProject } from '../hooks/queries';
 import { useAuth } from '../auth/AuthProvider';
-import { ROLE_LABELS, STATUS_LABELS, STATUS_ORDER } from '../lib/format';
-import type { StatusCounts } from '../types';
+import { PROJECT_STATUS_LABELS, ROLE_LABELS, STATUS_LABELS, STATUS_ORDER } from '../lib/format';
+import type { ProjectStatus, StatusCounts } from '../types';
+
+const PROJECT_STATUSES: ProjectStatus[] = ['ACTIVE', 'ON_HOLD', 'COMPLETED'];
 
 const Progress = ({ counts, total }: { counts: StatusCounts; total: number }) => {
   const done = counts.DONE;
@@ -76,7 +80,9 @@ export const ProjectDetailPage = () => {
   const { user } = useAuth();
   const project = useProject(id);
   const tasks = useTasks(`projectId=${id}&limit=100&sort=priority&order=desc`);
+  const updateProject = useUpdateProject();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const canManage =
     user?.role === 'ADMIN' ||
@@ -97,7 +103,33 @@ export const ProjectDetailPage = () => {
         actions={
           <>
             {members.length > 0 ? <AvatarStack names={members.map((m) => m.name)} /> : null}
-            <ProjectStatusBadge status={data.status} />
+            {canManage ? (
+              <Select
+                aria-label="Project status"
+                className="w-36"
+                value={data.status}
+                disabled={updateProject.isPending}
+                onChange={(event) =>
+                  updateProject.mutate({
+                    id: data.id,
+                    status: event.target.value as ProjectStatus,
+                  })
+                }
+              >
+                {PROJECT_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {PROJECT_STATUS_LABELS[status]}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <ProjectStatusBadge status={data.status} />
+            )}
+            {canManage ? (
+              <Button variant="secondary" onClick={() => setEditOpen(true)}>
+                Edit
+              </Button>
+            ) : null}
             {canManage ? <Button onClick={() => setDialogOpen(true)}>New task</Button> : null}
           </>
         }
@@ -196,6 +228,7 @@ export const ProjectDetailPage = () => {
       </div>
 
       <TaskDialog open={dialogOpen} onClose={() => setDialogOpen(false)} defaultProjectId={id} />
+      <ProjectDialog open={editOpen} onClose={() => setEditOpen(false)} project={data} />
     </div>
   );
 };
