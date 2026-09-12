@@ -3,6 +3,8 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { IconChevronRight } from '../ui/Icon';
+import { useAuth } from '../../auth/AuthProvider';
+import { pageTitle } from '../../lib/pageTitle';
 
 export const PageHeader = ({
   title,
@@ -76,10 +78,18 @@ export const Section = ({
 export const AppShell = () => {
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
 
   useEffect(() => {
     setNavOpen(false);
+    // Without this a long task list keeps its scroll position when you open a
+    // task, so the detail page opens halfway down.
+    window.scrollTo({ top: 0 });
   }, [location.pathname]);
+
+  useEffect(() => {
+    document.title = pageTitle(location.pathname, user?.name, user?.role);
+  }, [location.pathname, user?.name, user?.role]);
 
   return (
     <div className="flex min-h-full">

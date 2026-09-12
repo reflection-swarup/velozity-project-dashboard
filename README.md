@@ -172,7 +172,7 @@ npm run verify:overdue   # 7 checks on the scheduled job itself
 
 cd ../web
 npm run typecheck        # strict, noUncheckedIndexedAccess, noUnusedLocals
-npm test                 # 11 vitest unit tests
+npm test                 # 16 vitest unit tests
 npm run build            # production build
 ```
 
@@ -317,6 +317,9 @@ FLAGGED 08:05:04   ← the */5 tick, 75s later
 check, an event from Project B would be prepended into a feed filtered to Project A. The tests
 assert an event reaches the unfiltered feed and its own project's feed, and **never** a feed
 scoped to a different project.
+
+It also covers the browser tab title, which names the section and the signed in user so two
+sessions open side by side are tellable apart from the tab strip alone.
 
 ---
 

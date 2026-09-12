@@ -595,7 +595,7 @@ def build():
       <tr><td><code>npm run smoke</code></td><td>117</td><td>Role scoping, realtime fan-out, tokens, validation, error shapes</td></tr>
       <tr><td><code>npm run attack</code></td><td>24</td><td>Adversarial: tries to break each boundary from outside</td></tr>
       <tr><td><code>npm run verify:overdue</code></td><td>7</td><td>The scheduler, including that a second sweep is a no-op</td></tr>
-      <tr><td><code>npm test</code> (web)</td><td>11</td><td>Client cache scoping and query-key behaviour</td></tr>
+      <tr><td><code>npm test</code> (web)</td><td>16</td><td>Client cache scoping, query keys, and tab titles</td></tr>
     </tbody>
   </table>
   <p>The adversarial suite was run against the deployed API, not only locally: all 24 passed,
