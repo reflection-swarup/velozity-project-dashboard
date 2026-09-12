@@ -147,7 +147,8 @@ export const LandingPage = () => {
             </button>
             {status === 'authenticated' && user ? (
               <>
-                <span className="hidden text-[13px] text-muted lg:inline">
+                <span className="mx-1.5 hidden h-7 w-px bg-line lg:block" />
+                <span className="mr-1.5 hidden text-[13px] text-muted lg:inline">
                   Signed in as <span className="font-semibold text-ink">{user.name}</span>
                 </span>
                 <Link to="/dashboard">
