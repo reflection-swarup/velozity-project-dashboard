@@ -99,6 +99,38 @@ body {
   outline-offset: 2px;
 }
 
+/* Tailwind v4 resets buttons to cursor: default. Anything that acts on a click
+   should say so under the pointer. */
+button:not(:disabled),
+[role='button']:not(:disabled),
+select:not(:disabled),
+summary {
+  cursor: pointer;
+}
+
+/* The native select arrow sits hard against the border and cannot be moved, so
+   the control hides it and draws its own with room to breathe. */
+.field-select {
+  appearance: none;
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  background-size: 1.05rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%235e6a7b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+}
+
+.dark .field-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238892a4' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+}
+
+/* Options inherit the control's size, which leaves the native popup cramped, so
+   they are set a step larger than the closed control. */
+.field-select option {
+  background-color: var(--c-surface);
+  color: var(--c-ink);
+  font-size: 1rem;
+  padding: 0.45rem 0.6rem;
+}
+
 ::selection {
   background-color: var(--c-accent-soft);
 }

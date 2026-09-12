@@ -25,7 +25,7 @@ export const Select = ({
   children,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select className={clsx(control, 'h-10 pr-8', className)} {...props}>
+  <select className={clsx(control, 'field-select h-10 pr-10', className)} {...props}>
     {children}
   </select>
 );
